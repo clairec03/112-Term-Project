@@ -3,6 +3,8 @@
 from cmu_112_graphics import *
 from seqAnalysis import *
 from userInterfaces import *
+import tkinter
+import numpy as np
 
 def appStarted(app):
     url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
@@ -15,7 +17,8 @@ def appStarted(app):
     url_pyrimidines = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Blausen_0324_DNA_Pyrimidines.png/640px-Blausen_0324_DNA_Pyrimidines.png"
     url_purines = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Blausen_0323_DNA_Purines.png/460px-Blausen_0323_DNA_Purines.png"
     image_cytosine = app.loadImage(url_pyrimidines)
-    app.image_cytosine_scaled = image_cytosine.crop((240, 0, 680, 300))
+    image_cytosine = app.scaleImage(image_cytosine, 2/3)
+    app.image_cytosine_scaled = image_cytosine.crop((200, 0, 600, 200))
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
                          3 * app.width / 5,  4.4 * app.height / 5)
     app.buttonTopLeft = (app.width / 12, app.height / 12, 
@@ -33,6 +36,7 @@ def appStarted(app):
                        "thr", "trp", "tyr", "val"}
     app.width, app.height = 1000, 800
     app.wantInput = False
+    app.timesteps = np.arange(0, 1000, .3)
     resetApp(app)
 
 def resetApp(app):
@@ -76,7 +80,7 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomRight):
             print(app.buttonBottomRight)
             print("event is in button on the design page")
-            goToPromptWindow(app)
+            app.isVisualPage = True
     # if app.isDesignPage:
     #     pass
 
@@ -114,23 +118,24 @@ def drawHelpPage(app, canvas):
                        font = "Arial 20")
 
 def drawHomepage(app, canvas):
+    button1 = app.buttonCenter1
     canvas.create_image(app.width /2 , app.height / 2, 
                         image=ImageTk.PhotoImage(app.image_home))
-    button1 = app.buttonCenter1
     canvas.create_text(app.width / 2, 1.8 * app.height / 3,
                     text = "myCrispr", 
                     font = "Helvetica 70", fill="white")
     canvas.create_text(app.width / 2, 2.2 * app.height / 3,
                     text = "CRISPR cas9 enzyme creator at your fingertips", 
                     font = "Arial 16", fill="CadetBlue1")
-    canvas.create_rectangle(button1[0], button1[1], button1[2], button1[3],
-                            fill = "RoyalBlue4")
+    drawCenter1Button(app, canvas, "RoyalBlue4")
     canvas.create_text((button1[0] + button1[2])/2, (button1[1] + button1[3])/2,
                        text="Skip intro", fill="Slategray2", 
                        font = "Arial 15 bold")
     canvas.create_text((button1[0] + button1[2])/2, 0.92 * (button1[1] + button1[3])/2,
                        text="press any key to begin", fill="white",
                        font="Arial 20 bold", anchor = "n")
+    canvas.create_text(app.width/2, 7.5*app.height/8, text= "press h for help",
+                        fill = "snow", font="Arial 13")
 
 def drawIntroPage(app, canvas):
     # Source: https://www.nature.com/articles/s41467-018-04252-2
@@ -155,13 +160,47 @@ def drawIntroPage(app, canvas):
                        font = "Arial 15 bold")
     buttonRight = app.buttonBottomRight
     canvas.create_text((buttonRight[0] + buttonRight[2])/2, (buttonRight[1]+
-                        buttonRight[3])/2, text = "Write Custom Sequence", 
+                        buttonRight[3])/2, text = "Visualize Protein", 
                         fill = "snow", font = "Arial 15 bold")
 
 def drawDesignPage(app, canvas):
     drawReturnButton(app,canvas)
-    canvas.create_image(app.width / 4, app.height / 4, 
-                        image=ImageTk.PhotoImage(app.image_cytosine_scaled))
+    for t in app.timesteps:
+        # RGB values range from 0 to 255
+        #                    dark -> light
+        # Timesteps range from 0 to 1000
+        r = 12
+        # First strand of carbon-phosphate backbone
+        x = 100 * np.sin(2 * np.pi * t / 255) + app.height/2
+        period = (2 * np.pi) / (2 * np.pi / 255)
+        canvas.create_oval(t-r, x-r, t+r, x+r, fill = f"#{toHex(toRGB(t, period))}",
+                                outline = f"#{toHex(toRGB(t, period))}")
+        # Second strand of carbon-phosphate backbone
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
+        # if y < 500 and (t % (1000//3) < (1000//6)):
+        canvas.create_oval(t-r, y-r, t+r, y+r, fill = f"#{toHex(toReverseRGB(t, period))}", 
+                            outline=f"#{toHex(toReverseRGB(t, period))}")
+
+def drawVisualPage(app, canvas):
+    drawReturnButton(app, canvas)
+    # canvas.create_image(app.width/2, app.height /2)
+
+def toRGB(t, period):
+    newT = t % period - 25 + 255/2
+    r = int((newT % 255)/2.55) + 155
+    g = r
+    b = int((newT % 255)/2.55) + 155
+    return (r, g, b)
+
+def toReverseRGB(t, period):
+    newT = t % period - 25
+    r = int((abs(255 - newT) % 255)/2.55) + 155
+    g = r
+    b = int((newT % 255)/2.55) + 155
+    return (r, g, b)
+
+def toHex(tuple):
+    return "%02x%02x%02x" % tuple
 
 def drawBottomLeftButton(app, canvas, color):
     button = app.buttonBottomLeft
@@ -173,6 +212,11 @@ def drawBottomRightButton(app, canvas, color):
     canvas.create_rectangle(button[0], button[1], button[2], button[3],
                             fill=f"{color}")
 
+def drawCenter1Button(app, canvas, color):
+    button1 = app.buttonCenter1
+    canvas.create_rectangle(button1[0], button1[1], button1[2], button1[3],
+                            fill = f"{color}")
+                            
 def drawReturnButton(app,canvas):
     buttonReturn = app.buttonTopLeft
     canvas.create_rectangle(buttonReturn[0], buttonReturn[1], buttonReturn[2], 
