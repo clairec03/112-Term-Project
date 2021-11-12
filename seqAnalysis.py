@@ -1,5 +1,5 @@
 # Source of documentation: 
-# https://biopython.org/wiki/Alphabet
+# https://biopython.org/wiki/
 
 # Import BioPython modules
 from Bio.Seq import Seq
@@ -26,35 +26,15 @@ for line in str(record).split('\n'):
         molecule_type = lineOfRecord[0]
         newEntries = molecule_type.split("=")
         print(f"new entries are {newEntries}")
-        sample_dna_info[newEntries[0]] = newEntries[1]
-print(sample_dna_info)
+        sample_dna_info[newEntries[0][1:]] = newEntries[1]
 
 # DNA Transcript 
 sample_rna = sample_dna.transcribe()
 # print(sample_rna)
 
 # Translate into protein
-sample_protein = sample_rna.translate()
+sample_protein = str(sample_rna.translate())
+sample_dna_info["Amino acid sequence"] = sample_protein
+print(sample_protein)
+print(sample_dna_info)
 # print(sample_protein)
-'''
-alanine - ala - A 
-arginine - arg - R
-asparagine - asn - N 
-aspartic acid - asp - D 
-cysteine - cys - C
-glutamine - gln - Q
-glutamic acid - glu - E
-glycine - gly - G
-histidine - his - H
-isoleucine - ile - I
-leucine - leu - L
-lysine - lys - K
-methionine - met - M
-phenylalanine - phe - F
-proline - pro - P
-serine - ser - S
-threonine - thr - T 
-tryptophan - trp - W
-tyrosine - tyr - Y
-valine - val - V
-'''

@@ -13,12 +13,14 @@ def appStarted(app):
     url_design_scissors = "https://www.sciencenewsforstudents.org/wp-content/uploads/2019/11/080819_ti_crisprsicklecell_feat-1028x579-1028x579.jpg"
     image_design_scissors = app.loadImage(url_design_scissors)
     app.image_design = app.scaleImage(image_design_scissors, 1/3)
+    organism_image = app.loadImage("https://upload.wikimedia.org/wikipedia/commons/9/9a/Banded_Mongoose_Nose_Detail%2C_crop.jpg")
+    app.organism_image =  app.scaleImage(organism_image, 1/10)
     # app.image_design = image_design.crop((200, 200, 400, 579))
-    url_pyrimidines = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Blausen_0324_DNA_Pyrimidines.png/640px-Blausen_0324_DNA_Pyrimidines.png"
+    # url_pyrimidines = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Blausen_0324_DNA_Pyrimidines.png"
     url_purines = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Blausen_0323_DNA_Purines.png/460px-Blausen_0323_DNA_Purines.png"
-    image_cytosine = app.loadImage(url_pyrimidines)
-    image_cytosine = app.scaleImage(image_cytosine, 2/3)
-    app.image_cytosine_scaled = image_cytosine.crop((200, 0, 600, 200))
+    # image_cytosine = app.loadImage(url_pyrimidines)
+    # image_cytosine = app.scaleImage(image_cytosine, 2/3)
+    # app.image_cytosine_scaled = image_cytosine.crop((200, 0, 600, 200))
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
                          3 * app.width / 5,  4.4 * app.height / 5)
     app.buttonTopLeft = (app.width / 12, app.height / 12, 
@@ -37,6 +39,7 @@ def appStarted(app):
     app.width, app.height = 1000, 800
     app.wantInput = False
     app.timesteps = np.arange(0, 1000, .3)
+    app.zoomLevel = 0
     resetApp(app)
 
 def resetApp(app):
@@ -61,6 +64,7 @@ def keyPressed(app, event):
 def getUserInput(app, prompt):
     if app.wantInput:
         return simpledialog.askstring('getUserInput', prompt)
+    app.timerDelay = 10000
     app.wantInput = False
 
 def mousePressed(app, event):
@@ -80,7 +84,10 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomRight):
             print(app.buttonBottomRight)
             print("event is in button on the design page")
-            app.isVisualPage = True
+            goToVisualPage(app)
+    elif app.isVisualPage:
+        if inButton(event, app.buttonTopLeft):
+            resetApp(app)
     # if app.isDesignPage:
     #     pass
 
@@ -91,16 +98,26 @@ def goToDesignPage(app):
 def goToPromptWindow(app):
     app.wantInput = True
 
+def goToVisualPage(app):
+    app.isHomepage = False
+    app.isDesignPage = False
+    app.isVisualPage = True
+    app.isHelpPage = False
+    app.isIntroPage = False 
+
 def redrawAll(app, canvas):
-    drawBackground(app, canvas)
+    drawBackground(app, canvas, "mintcream")
     if app.isHomepage:
         drawHomepage(app, canvas)
+        drawHelpHint(app, canvas, "snow")
     elif app.isDesignPage:
         drawDesignPage(app, canvas)
+        drawHelpHint(app, canvas, "RoyalBlue4")
     elif app.isIntroPage:
         drawIntroPage(app, canvas)
-    canvas.create_text(app.width/2, 5 * app.width /6, text = "press h for help",
-                    font = "Arial 15",fill="snow")
+        drawHelpHint(app, canvas, "RoyalBlue4")
+    elif app.isVisualPage:
+        drawVisualPage(app, canvas)
     if app.isHelpPage:
         drawHelpPage(app,canvas)
 
@@ -108,6 +125,9 @@ def inButton(event, button):
     return (button[0] <= event.x <= button[2] and 
             button[1] <= event.y <= button[3])
 
+def drawHelpHint(app, canvas, color):
+    canvas.create_text(app.width/2, 5 * app.width /6, text = "press h for help",
+                    font = "Arial 15",fill=f"{color}")
 
 def drawHelpPage(app, canvas):
     canvas.create_rectangle(0, 0, app.width, app.height, fill='DarkSeaGreen1')
@@ -164,43 +184,76 @@ def drawIntroPage(app, canvas):
                         fill = "snow", font = "Arial 15 bold")
 
 def drawDesignPage(app, canvas):
+    drawBackground(app, canvas, "#001a33")
     drawReturnButton(app,canvas)
+    seq = sample_dna_info['Sequence']
+    spacing = 1000 / len(seq)
+    canvas.create_line(0, 400, 1000, 400)
+    for i in range(len(seq)):
+        t = i * spacing 
+        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
+        if x < y:
+            canvas.create_line(t, x, t, y)
+        else: 
+            canvas.create_line(t, y, t, x)
     for t in app.timesteps:
         # RGB values range from 0 to 255
         #                    dark -> light
         # Timesteps range from 0 to 1000
         r = 12
-        # First strand of carbon-phosphate backbone
-        x = 100 * np.sin(2 * np.pi * t / 255) + app.height/2
-        period = (2 * np.pi) / (2 * np.pi / 255)
-        canvas.create_oval(t-r, x-r, t+r, x+r, fill = f"#{toHex(toRGB(t, period))}",
-                                outline = f"#{toHex(toRGB(t, period))}")
-        # Second strand of carbon-phosphate backbone
+        # First strand of sugar-phosphate backbone
+        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
+        canvas.create_oval(t-r, x-r, t+r, x+r, fill = f"#{toHex(toRGB(t))}",
+                                outline = f"#{toHex(toRGB(t))}")
+        # Second strand of sugar-phosphate backbone
         y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
         # if y < 500 and (t % (1000//3) < (1000//6)):
-        canvas.create_oval(t-r, y-r, t+r, y+r, fill = f"#{toHex(toReverseRGB(t, period))}", 
-                            outline=f"#{toHex(toReverseRGB(t, period))}")
+        canvas.create_oval(t-r, y-r, t+r, y+r, fill = f"#{toHex(toRGB(t))}", 
+                            outline=f"#{toHex(toRGB(t))}")
+    for i in range(len(seq)):
+        t = i * spacing 
+        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
+        # Prints original strand
+        canvas.create_text(t, (x+400)/2, text = f"{seq[i]}", fill = "mintcream",
+                        font = "Arial 15 bold")
+        # Prints complementary strand
+        if seq[i] == 'A':
+            complement = 'T'
+        elif seq[i] == 'T':
+            complement = 'A'
+        elif seq[i] == 'G':
+            complement = 'C'
+        elif seq[i] == 'C':
+            complement = 'G'
+        canvas.create_text(t, (y+400)/2, text = f"{complement}", 
+                          fill = "mintcream", font = "Arial 15 bold")
 
-def drawVisualPage(app, canvas):
-    drawReturnButton(app, canvas)
-    # canvas.create_image(app.width/2, app.height /2)
-
-def toRGB(t, period):
-    newT = t % period - 25 + 255/2
-    r = int((newT % 255)/2.55) + 155
-    g = r
-    b = int((newT % 255)/2.55) + 155
-    return (r, g, b)
-
-def toReverseRGB(t, period):
-    newT = t % period - 25
-    r = int((abs(255 - newT) % 255)/2.55) + 155
-    g = r
-    b = int((newT % 255)/2.55) + 155
+def toRGB(t):
+    r = int(abs(150 * np.sin(2 * np.pi * (t-200) / 255)))
+    g = int(0.8 * r)
+    b = 255
     return (r, g, b)
 
 def toHex(tuple):
     return "%02x%02x%02x" % tuple
+
+def drawVisualPage(app, canvas):
+    canvas.create_image(3 * app.width / 4 , app.height / 5, 
+                        image=ImageTk.PhotoImage(app.organism_image))
+    drawReturnButton(app, canvas)
+    dna_dict = sample_dna_info
+    counter = 0
+    for entry in sample_dna_info:
+        # Displays dna sequence
+        canvas.create_text(2 * app.width / 3, (1 + 0.1 * counter) * app.height /3, 
+                        text = f"{entry}", anchor = "w", font = "Arial 15 bold")
+        counter += 1
+        # Displays protein sequence
+        canvas.create_text(2 * app.width / 3, (1 + 0.1 * counter) * app.height /3, 
+                        text = dna_dict[f"{entry}"], anchor = "w", font = "Arial 15")
+        counter += 1
 
 def drawBottomLeftButton(app, canvas, color):
     button = app.buttonBottomLeft
@@ -225,7 +278,7 @@ def drawReturnButton(app,canvas):
                         (buttonReturn[1]+buttonReturn[3])/2,
                         text = "Return", font = "Arial 20",fill="snow")
 
-def drawBackground(app, canvas):
-    canvas.create_rectangle(0, 0, app.width, app.height, fill = "mintcream")
+def drawBackground(app, canvas, color):
+    canvas.create_rectangle(0, 0, app.width, app.height, fill = f"{color}")
 
 runApp(width = 1000, height = 800)
