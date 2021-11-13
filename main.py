@@ -4,8 +4,95 @@ from cmu_112_graphics import *
 from seqAnalysis import *
 import numpy as np
 from projections import *
+import math
+import numpy as np
+import parser
+
+coordinatesInNumpy = parser.coordinatesInNumpy
+elemsInNumpy = parser.elemsInNumpy
+
+class Protein(object):
+    def __init__(self, coordinate, atom):
+        location = [coordinate[0], coordinate[1], 
+                    coordinate[2], coordinate[3]]
+        self.coordinate = np.array(location)
+        self.coordinate2D = threeDToTwoD(self.coordinate)
+        self.atom = atom
+
+    def scaleUp(self):
+        entries = [[1.05, 0, 0, 0], 
+                    [0, 1.05, 0, 0],
+                    [0, 0, 1.05, 0],
+                    [0, 0, 0, 1]]
+        scaleUpMatrix = np.array(entries)
+        product = np.matmul(scaleUpMatrix, self.coordinate)
+        self.coordinate = product
+    
+    def scaleDown(self):
+        entries = [[0.95, 0, 0, 0], 
+                   [0, 0.95, 0, 0],
+                   [0, 0, 0.95, 0],
+                   [0, 0, 0, 1]]
+        scaleUpMatrix = np.array(entries)
+        product = np.matmul(scaleUpMatrix, self.coordinate)
+        self.coordinate = product
+
+    def rotateAroundZ(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
+                    [0, 1, 0, 0],
+                    [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                    [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
+    
+    def rotateAroundX(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
+                    [0, 1, 0, 0],
+                    [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                    [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
+
+    def rotateAroundY(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0, 0],
+                    [0, 0, 1, 0],
+                    [-math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
+                    [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
 
 def appStarted(app):
+    app.atoms = list()
+    #            C, H, O, N, P, S
+    elemCount = [0, 0, 0, 0, 0, 0]
+    app.coordinates, app.elems = coordinatesInNumpy, elemsInNumpy
+    for i in range(len(coordinatesInNumpy)):
+        app.atoms.append(Protein(app.coordinates[i], app.elems[i]))
+        if app.elems[i] == 'C':
+            elemCount[0] += 1
+        elif app.elems[i] == 'H':
+            elemCount[1] += 1
+        elif app.elems[i] == 'O':
+            elemCount[2] += 1
+        elif app.elems[i] == 'N':
+            elemCount[3] += 1
+        elif app.elems[i] == 'P':
+            elemCount[4] += 1
+        elif app.elems[i] == 'S':
+            elemCount[5] += 1
+    totalCount = sum(elemCount)
+    app.percent = dict()
+    app.percent['Carbon'] = 100 * elemCount[0] / totalCount
+    app.percent['Hydrogen'] = 100 * elemCount[1] / totalCount
+    app.percent['Oxygen'] = 100 * elemCount[2] / totalCount
+    app.percent['Nitrogen'] = 100 * elemCount[3] / totalCount
+    app.percent['Phosphorus'] = 100 * elemCount[4] / totalCount
+    app.percent['Sulfur'] = 100 * elemCount[5] / totalCount
+    app.level = -10
+    app.isTimerFired = False
     url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
     app.image_home = app.loadImage(url_home)
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
@@ -44,14 +131,40 @@ def resetApp(app):
     app.drawCustomSeqPage = False
   
 def keyPressed(app, event):
-    if not app.isHelpPage and event.key == "h":
+    if event.key == "+":
+        for atom in app.atoms:
+            atom.scaleUp()
+            atom.coordinate2D = threeDToTwoD(atom.coordinate)
+        app.level += 1
+    elif event.key == "-":
+        for atom in app.atoms:
+            atom.scaleDown()
+            atom.coordinate2D = threeDToTwoD(atom.coordinate)
+        app.level -= 1
+    elif event.key == "Left":
+        for atom in app.atoms:
+            atom.rotateAroundZ(-1)
+            atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    elif event.key == "Right":
+        for atom in app.atoms:
+            atom.rotateAroundZ(1)
+            atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    elif event.key == "r":
+        app.isTimerFired = not app.isTimerFired
+    elif not app.isHelpPage and event.key == "h":
         app.isHelpPage = True
     elif app.isHelpPage and event.key == "x":
         app.isHelpPage = False
     elif app.isHomepage:
         app.isHomepage = False
         app.isIntroPage = True
- 
+
+# def timerFired(app):
+#     while app.isTimerFired:
+#         for atom in app.atoms:
+#             atom.rotateAroundZ(-0.5)
+#             atom.coordinate2D = threeDToTwoD(atom.coordinate)
+
 def getUserInput(app, prompt):
     if app.wantInput:
         return simpledialog.askstring('getUserInput', prompt)
@@ -59,7 +172,6 @@ def getUserInput(app, prompt):
     app.wantInput = False
 
 def mousePressed(app, event):
-    print(f"event at {event.x}, {event.y}")
     if app.isHomepage:
         if inButton(event, app.buttonCenter1):
             app.isHomepage = False
@@ -73,7 +185,6 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomLeft):
             goToDesignPage(app)
         elif inButton(event, app.buttonBottomRight):
-            print(app.buttonBottomRight)
             goToVisualPage(app)
     elif app.isVisualPage:
         if inButton(event, app.buttonTopLeft):
@@ -159,8 +270,8 @@ def drawIntroPage(app, canvas):
     drawReturnButton(app,canvas)
     drawBottomLeftButton(app, canvas, "steel blue")
     drawBottomRightButton(app, canvas, "pale violet red")
-    canvas.create_image(app.width / 3.3, app.height / 1.7,
-                        image=ImageTk.PhotoImage(app.image_design))
+    # canvas.create_image(app.width / 3.3, app.height / 1.7,
+    #                     image=ImageTk.PhotoImage(app.image_design))
     buttonLeft = app.buttonBottomLeft
     canvas.create_text((buttonLeft[0] + buttonLeft[2])/2, (buttonLeft[1] + buttonLeft[3])/2,
                        text = "Use Template Sequence", fill = "snow", 
@@ -227,13 +338,13 @@ def toHex(tuple):
     return "%02x%02x%02x" % tuple
 
 def drawVisualPage(app, canvas):
+    drawBackground(app, canvas, "grey8")
     drawReturnButton(app, canvas)
     drawAxes(app, canvas)
     for atom in app.atoms:
-        # coordinate = (atom.coordinate2D[0] + app.width / 2, 
-        #               atom.coordinate2D[1] + 4 * app.height / 10)
+        # Converts 2D coordinates into TK coordinates
         coordinate = (atom.coordinate2D[0] + app.width / 2, 
-                      atom.coordinate2D[1])
+                      atom.coordinate2D[1] + app.width / 3)
         if atom.atom == 'C':
             drawCarbon(app, canvas, coordinate)
         elif atom.atom == 'H':
@@ -247,6 +358,13 @@ def drawVisualPage(app, canvas):
         elif atom.atom == 'S':
             drawSulfur(app, canvas, coordinate)
     canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
+    # Displays chemical composition
+    counter = 0
+    for element in app.percent:
+        canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 10, 
+                    text = f"{element}: {app.percent[element]}%", anchor = "w", 
+                    fill = "mint cream", font = "Arial 15 bold")
+        counter += 1
 
 def drawCustomSeqPage(app, canvas):
         # canvas.create_image(3 * app.width / 4 , app.height / 5, 
@@ -289,5 +407,68 @@ def drawReturnButton(app,canvas):
 
 def drawBackground(app, canvas, color):
     canvas.create_rectangle(0, 0, app.width, app.height, fill = f"{color}")
+
+def threeDToTwoD(coordinate):
+    # Matrix from https://en.wikipedia.org/wiki/Isometric_projection
+    scalar = 1 / (6 ** 0.5)
+    entries = [[scalar * 3 ** 0.5, 0, -scalar * 3 ** 0.5],
+                [scalar * 1, scalar * 2, scalar *1],
+                [scalar * 2 ** 0.5, -scalar * 2 ** 0.5, scalar * 2 ** 0.5]]
+    matrix = np.array(entries)
+    coordinates3D = coordinate[0:3]
+    product = np.matmul(matrix, coordinates3D)
+    # Then, do an orthographic projection on the product 
+    projections = [[1, 0, 0],
+                  [0, 1, 0],
+                  [0, 0, 0]]
+    projectToXY = np.array(projections)
+    result = np.matmul(projectToXY, product)
+    return result[0:2]
+
+# def twoDToTK(app, coordinate):
+#     # X remains unchanged
+#     x, oldY = coordinate[0], coordinate[1]
+#     newY = -oldY + app.height / 2
+#     return [x, newY]
+
+def drawAxes(app, canvas):
+    # X axis
+    canvas.create_line(app.width / 5, 4 * app.height / 5, app.width / 2, app.height / 2)
+    # Y axis
+    canvas.create_line(app.width / 2, app.height / 2, 4 * app.width / 5, 4 * app.height / 5)
+    # Z axis
+    canvas.create_line(app.width / 2, app.height / 5, app.width / 2, app.height / 2)
+
+# Atomic radii of the elements
+# C =  77, H = 37, O = 73, N = 70, P = 110, S = 103
+def drawCarbon(app, canvas, coordinate):
+    r = 77/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'slategray1')
+
+def drawHydrogen(app, canvas, coordinate):
+    r = 37/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'floral white')
+
+def drawOxygen(app, canvas, coordinate):
+    r = 73/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'IndianRed3')
+
+def drawNitrogen(app, canvas, coordinate):
+    r = 70/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'RoyalBlue3')
+
+def drawPhosphorus(app, canvas, coordinate):
+    r = 110/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'gold', outline = "gold")
+
+def drawSulfur(app, canvas, coordinate):
+    r = 103/73 + 0.15 * app.level
+    (x, y) = (coordinate[0], coordinate[1])
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'LightPink1', outline = 'LightPink1')
 
 runApp(width = 1000, height = 800)

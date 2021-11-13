@@ -7,7 +7,6 @@ import parser
 #               [100, 0, 0, 100], [100, 100, 0, 1], [100, 0, 100, 1],
 #               [0, 100, 100, 1], [100, 100, 100, 1]]
 # coordinatesInNumpy = np.array(coordinates)
-# print(f"coordinates in numpy are {coordinatesInNumpy}")
 # elems = ['N', 'C', 'O', 'H', 'C', 'P', 'H', 'S']
 # elemsInNumpy = np.array(elems)
 
@@ -55,12 +54,13 @@ def appStarted(app):
     for i in range(len(coordinatesInNumpy)):
         app.atoms.append(Protein(app.coordinates[i], app.elems[i]))
     app.level = 0
+    app.isTimerFired = False
 
-def timerFired(app):
-    app.timerDelay = 1000
-    for atom in app.atoms:
-        atom.rotateAroundZ(-0.1)
-        atom.coordinate2D = threeDToTwoD(atom.coordinate)
+# def timerFired(app):
+#     if app.isTimerFired:
+#         for atom in app.atoms:
+#             atom.rotateAroundZ(-0.1)
+#             atom.coordinate2D = threeDToTwoD(atom.coordinate)
 
 def keyPressed(app, event):
     if event.key == "+":
@@ -81,6 +81,10 @@ def keyPressed(app, event):
         for atom in app.atoms:
             atom.rotateAroundZ(1)
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    elif event.key == "R":
+        app.isTimerFired = not app.isTimerFired
+    elif event.key == "H":
+        app.isHelpPage = not app.isHelpPage
 
 def threeDToTwoD(coordinate):
     # Matrix from https://en.wikipedia.org/wiki/Isometric_projection

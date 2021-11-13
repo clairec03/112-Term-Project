@@ -24,7 +24,6 @@ for line in pdb1s5l.split("\n"):
         for entry in entries:
             if entry != "":
                 result.append(entry)
-        print(float(result[6]), float(result[7]), float(result[8]))
         [x, y, z, w] = [float(result[6]), float(result[7]), float(result[8]), 1]
         coordinates.append([x,y,z, w])
         elements.append(result[-1])
@@ -45,5 +44,3 @@ middleZ = (maxZ + minZ) / 2
 for row in coordinates:
     row[2] = row[2] - middleZ
 coordinatesInNumpy, elemsInNumpy = np.array(coordinates), np.array(elements)
-# print(coordinatesInNumpy, elemsInNumpy)
-print(testArray == coordinatesInNumpy)
