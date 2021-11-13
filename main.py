@@ -2,9 +2,8 @@
 # Andrew ID: ccz
 from cmu_112_graphics import *
 from seqAnalysis import *
-from userInterfaces import *
-import tkinter
 import numpy as np
+from projections import *
 
 def appStarted(app):
     url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
@@ -12,15 +11,9 @@ def appStarted(app):
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
     url_design_scissors = "https://www.sciencenewsforstudents.org/wp-content/uploads/2019/11/080819_ti_crisprsicklecell_feat-1028x579-1028x579.jpg"
     image_design_scissors = app.loadImage(url_design_scissors)
-    app.image_design = app.scaleImage(image_design_scissors, 1/3)
-    organism_image = app.loadImage("https://upload.wikimedia.org/wikipedia/commons/9/9a/Banded_Mongoose_Nose_Detail%2C_crop.jpg")
-    app.organism_image =  app.scaleImage(organism_image, 1/10)
-    # app.image_design = image_design.crop((200, 200, 400, 579))
-    # url_pyrimidines = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Blausen_0324_DNA_Pyrimidines.png"
-    url_purines = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Blausen_0323_DNA_Purines.png/460px-Blausen_0323_DNA_Purines.png"
-    # image_cytosine = app.loadImage(url_pyrimidines)
-    # image_cytosine = app.scaleImage(image_cytosine, 2/3)
-    # app.image_cytosine_scaled = image_cytosine.crop((200, 0, 600, 200))
+    # app.organism_image = 
+    mouse = app.scaleImage(image_design_scissors, 1/3)
+    app.image_mouse = mouse.crop((200, 200, 400, 579))
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
                          3 * app.width / 5,  4.4 * app.height / 5)
     app.buttonTopLeft = (app.width / 12, app.height / 12, 
@@ -39,7 +32,6 @@ def appStarted(app):
     app.width, app.height = 1000, 800
     app.wantInput = False
     app.timesteps = np.arange(0, 1000, .3)
-    app.zoomLevel = 0
     resetApp(app)
 
 def resetApp(app):
@@ -48,10 +40,9 @@ def resetApp(app):
     app.isDesignPage = False
     app.isHelpPage = False
     app.isIntroPage = False 
-
-def timerFired(app):
-    pass
-
+    app.drawVisualPage = False
+    app.drawCustomSeqPage = False
+  
 def keyPressed(app, event):
     if not app.isHelpPage and event.key == "h":
         app.isHelpPage = True
@@ -64,7 +55,7 @@ def keyPressed(app, event):
 def getUserInput(app, prompt):
     if app.wantInput:
         return simpledialog.askstring('getUserInput', prompt)
-    app.timerDelay = 10000
+    # app.timerDelay = 10000
     app.wantInput = False
 
 def mousePressed(app, event):
@@ -83,17 +74,15 @@ def mousePressed(app, event):
             goToDesignPage(app)
         elif inButton(event, app.buttonBottomRight):
             print(app.buttonBottomRight)
-            print("event is in button on the design page")
             goToVisualPage(app)
     elif app.isVisualPage:
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
-    # if app.isDesignPage:
-    #     pass
 
 def goToDesignPage(app):
     app.isIntropage = False
     app.isDesignPage = True
+    app.isHomepage = False
 
 def goToPromptWindow(app):
     app.wantInput = True
@@ -118,16 +107,12 @@ def redrawAll(app, canvas):
         drawHelpHint(app, canvas, "RoyalBlue4")
     elif app.isVisualPage:
         drawVisualPage(app, canvas)
-    if app.isHelpPage:
+    elif app.isHelpPage:
         drawHelpPage(app,canvas)
 
 def inButton(event, button):
     return (button[0] <= event.x <= button[2] and 
             button[1] <= event.y <= button[3])
-
-def drawHelpHint(app, canvas, color):
-    canvas.create_text(app.width/2, 5 * app.width /6, text = "press h for help",
-                    font = "Arial 15",fill=f"{color}")
 
 def drawHelpPage(app, canvas):
     canvas.create_rectangle(0, 0, app.width, app.height, fill='DarkSeaGreen1')
@@ -154,8 +139,10 @@ def drawHomepage(app, canvas):
     canvas.create_text((button1[0] + button1[2])/2, 0.92 * (button1[1] + button1[3])/2,
                        text="press any key to begin", fill="white",
                        font="Arial 20 bold", anchor = "n")
+
+def drawHelpHint(app, canvas, color):
     canvas.create_text(app.width/2, 7.5*app.height/8, text= "press h for help",
-                        fill = "snow", font="Arial 13")
+                        fill = f"{color}", font="Arial 13")
 
 def drawIntroPage(app, canvas):
     # Source: https://www.nature.com/articles/s41467-018-04252-2
@@ -240,8 +227,30 @@ def toHex(tuple):
     return "%02x%02x%02x" % tuple
 
 def drawVisualPage(app, canvas):
-    canvas.create_image(3 * app.width / 4 , app.height / 5, 
-                        image=ImageTk.PhotoImage(app.organism_image))
+    drawReturnButton(app, canvas)
+    drawAxes(app, canvas)
+    for atom in app.atoms:
+        # coordinate = (atom.coordinate2D[0] + app.width / 2, 
+        #               atom.coordinate2D[1] + 4 * app.height / 10)
+        coordinate = (atom.coordinate2D[0] + app.width / 2, 
+                      atom.coordinate2D[1])
+        if atom.atom == 'C':
+            drawCarbon(app, canvas, coordinate)
+        elif atom.atom == 'H':
+            drawHydrogen(app, canvas, coordinate)
+        elif atom.atom == 'O':
+            drawOxygen(app, canvas, coordinate)
+        elif atom.atom == 'N':
+            drawNitrogen(app, canvas, coordinate)
+        elif atom.atom == 'P':
+            drawPhosphorus(app, canvas, coordinate)
+        elif atom.atom == 'S':
+            drawSulfur(app, canvas, coordinate)
+    canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
+
+def drawCustomSeqPage(app, canvas):
+        # canvas.create_image(3 * app.width / 4 , app.height / 5, 
+    #                     image=ImageTk.PhotoImage(app.organism_image))
     drawReturnButton(app, canvas)
     dna_dict = sample_dna_info
     counter = 0

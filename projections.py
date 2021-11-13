@@ -56,11 +56,11 @@ def appStarted(app):
         app.atoms.append(Protein(app.coordinates[i], app.elems[i]))
     app.level = 0
 
-# def timerFired(app):
-#     app.timerDelay = 1000
-#     for atom in app.atoms:
-#         atom.coordinate2D = threeDToTwoD(atom.coordinate)
-# self.coordinate2D = threeDToTwoD(self.coordinate)
+def timerFired(app):
+    app.timerDelay = 1000
+    for atom in app.atoms:
+        atom.rotateAroundZ(-0.1)
+        atom.coordinate2D = threeDToTwoD(atom.coordinate)
 
 def keyPressed(app, event):
     if event.key == "+":
@@ -81,9 +81,6 @@ def keyPressed(app, event):
         for atom in app.atoms:
             atom.rotateAroundZ(1)
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
-
-# def rgbToString(r,g,b):
-#     return f'#{r:02x}{g:02x}{b:02x}'
 
 def threeDToTwoD(coordinate):
     # Matrix from https://en.wikipedia.org/wiki/Isometric_projection
@@ -165,5 +162,3 @@ def drawSulfur(app, canvas, coordinate):
     r = 2 * (1 + 0.001 * app.level)
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'LightPink1', outline = 'LightPink1')
-
-runApp(width = 1000, height = 800)
