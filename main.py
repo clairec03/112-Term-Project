@@ -16,6 +16,7 @@ class Protein(object):
         location = [coordinate[0], coordinate[1], 
                     coordinate[2], coordinate[3]]
         self.coordinate = np.array(location)
+        self.staticCoords = np.array(location)
         self.coordinate2D = threeDToTwoD(self.coordinate)
         self.atom = atom
 
@@ -47,7 +48,7 @@ class Protein(object):
         self.coordinate = product
     
     def rotateAroundX(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
+        entries = [[1, 0, math.sin(sign * math.pi / 12), 0],
                     [0, 1, 0, 0],
                     [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
                     [0, 0, 0, 1]]
@@ -56,9 +57,9 @@ class Protein(object):
         self.coordinate = product
 
     def rotateAroundY(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0, 0],
+        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
+                    [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 1, 0],
                     [0, 0, 1, 0],
-                    [-math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
                     [0, 0, 0, 1]]
         rotateMatrix = np.array(entries)
         product = np.matmul(rotateMatrix, self.coordinate)
@@ -93,6 +94,7 @@ def appStarted(app):
     app.percent['Sulfur'] = 100 * elemCount[5] / totalCount
     app.level = -10
     app.isTimerFired = False
+    app.viewerCoords = (100, 100, 100)
     url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
     app.image_home = app.loadImage(url_home)
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
@@ -119,6 +121,12 @@ def appStarted(app):
     app.width, app.height = 1000, 800
     app.wantInput = False
     app.timesteps = np.arange(0, 1000, .3)
+    app.buttonX = (6 * app.width / 7, 2 * app.height / 5, 
+                            6.5 * app.width / 7, 2.2 * app.height / 5)
+    app.buttonY = (6 * app.width / 7, 2.3 * app.height / 5, 
+                            6.5 * app.width / 7, 2.5 * app.height / 5)
+    app.buttonZ = (6 * app.width / 7, 2.6 * app.height / 5, 
+                            6.5 * app.width / 7, 2.8 * app.height / 5)
     resetApp(app)
 
 def resetApp(app):
@@ -158,6 +166,27 @@ def keyPressed(app, event):
     elif app.isHomepage:
         app.isHomepage = False
         app.isIntroPage = True
+    elif app.isVisualPage:
+        if event.key == "Left":
+            if app.isRotatingX:
+                for atom in app.atoms:
+                    atom.rotateAroundX(-1)
+            elif app.isRotatingY:
+                for atom in app.atoms:
+                    atom.rotateAroundY(-1)
+            elif app.isRotatingZ:
+                for atom in app.atoms:
+                    atom.rotateAroundZ(-1)
+        elif event.key == "Right":
+            if app.isRotatingX:
+                for atom in app.atoms:
+                    atom.rotateAroundX(1)
+            elif app.isRotatingY:
+                for atom in app.atoms:
+                    atom.rotateAroundY(1)
+            elif app.isRotatingZ:
+                for atom in app.atoms:
+                    atom.rotateAroundY(1)
 
 # def timerFired(app):
 #     while app.isTimerFired:
@@ -189,6 +218,18 @@ def mousePressed(app, event):
     elif app.isVisualPage:
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
+        if inButton(event, app.buttonX):
+            app.isRotatingX = True
+            app.isRotatingY = False
+            app.isRotatingZ = False
+        elif inButton(event, app.buttonY):
+            app.isRotatingX = False
+            app.isRotatingY = True
+            app.isRotatingZ = False
+        elif inButton(event, app.buttonZ):
+            app.isRotatingX = False
+            app.isRotatingY = False
+            app.isRotatingZ = True
 
 def goToDesignPage(app):
     app.isIntropage = False
@@ -346,17 +387,17 @@ def drawVisualPage(app, canvas):
         coordinate = (atom.coordinate2D[0] + app.width / 2, 
                       atom.coordinate2D[1] + app.width / 3)
         if atom.atom == 'C':
-            drawCarbon(app, canvas, coordinate)
+            drawCarbon(app, canvas, coordinate, atom)
         elif atom.atom == 'H':
-            drawHydrogen(app, canvas, coordinate)
+            drawHydrogen(app, canvas, coordinate, atom)
         elif atom.atom == 'O':
-            drawOxygen(app, canvas, coordinate)
+            drawOxygen(app, canvas, coordinate, atom)
         elif atom.atom == 'N':
-            drawNitrogen(app, canvas, coordinate)
+            drawNitrogen(app, canvas, coordinate, atom)
         elif atom.atom == 'P':
-            drawPhosphorus(app, canvas, coordinate)
+            drawPhosphorus(app, canvas, coordinate, atom)
         elif atom.atom == 'S':
-            drawSulfur(app, canvas, coordinate)
+            drawSulfur(app, canvas, coordinate, atom)
     canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
     # Displays chemical composition
     counter = 0
@@ -365,6 +406,27 @@ def drawVisualPage(app, canvas):
                     text = f"{element}: {app.percent[element]}%", anchor = "w", 
                     fill = "mint cream", font = "Arial 15 bold")
         counter += 1
+    # Button X
+    canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
+                            app.buttonX[3],
+                            fill = "DeepSkyBlue2")
+    canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
+                        (app.buttonX[1] + app.buttonX[3])/2,
+                        text = "X", font = "Arial 15 bold", fill = "snow")
+    # Button Y
+    canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
+                            app.buttonY[3],
+                            fill = "DeepSkyBlue3")
+    canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
+                        (app.buttonY[1] + app.buttonY[3])/2,
+                        text = "Y", font = "Arial 15 bold", fill = "snow")
+    # Button Z
+    canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
+                            app.buttonZ[3],
+                            fill = "DeepSkyBlue4")
+    canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
+                        (app.buttonZ[1] + app.buttonZ[3])/2,
+                        text = "Z", font = "Arial 15 bold", fill = "snow")
 
 def drawCustomSeqPage(app, canvas):
         # canvas.create_image(3 * app.width / 4 , app.height / 5, 
@@ -441,34 +503,40 @@ def drawAxes(app, canvas):
 
 # Atomic radii of the elements
 # C =  77, H = 37, O = 73, N = 70, P = 110, S = 103
-def drawCarbon(app, canvas, coordinate):
-    r = 77/73 + 0.15 * app.level
+def drawCarbon(app, canvas, coordinate, atom):
+    coords = atom.coordinate[:3]
+    myCoords = app.viewerCoords
+    rgbScalar = int(abs(5 * getNorm(myCoords[0] - coords[0], myCoords[1] - coords[1], myCoords[2] - coords[2])))
+    r = 0.9 * 77/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
-    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'slategray1')
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = f'#{toHex((rgbScalar, rgbScalar, rgbScalar))}')
 
-def drawHydrogen(app, canvas, coordinate):
+def drawHydrogen(app, canvas, coordinate, atom):
     r = 37/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'floral white')
 
-def drawOxygen(app, canvas, coordinate):
+def drawOxygen(app, canvas, coordinate, atom):
     r = 73/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'IndianRed3')
 
-def drawNitrogen(app, canvas, coordinate):
+def drawNitrogen(app, canvas, coordinate, atom):
     r = 70/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'RoyalBlue3')
 
-def drawPhosphorus(app, canvas, coordinate):
+def drawPhosphorus(app, canvas, coordinate, atom):
     r = 110/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'gold', outline = "gold")
 
-def drawSulfur(app, canvas, coordinate):
-    r = 103/73 + 0.15 * app.level
+def drawSulfur(app, canvas, coordinate, atom):
+    r = 1.2 * 103/73 + 0.15 * app.level
     (x, y) = (coordinate[0], coordinate[1])
-    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'LightPink1', outline = 'LightPink1')
+    canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'LightPink1')
+
+def getNorm(x, y, z):
+    return (x ** 2 + y ** 2 + z ** 2) ** 0.5
 
 runApp(width = 1000, height = 800)
