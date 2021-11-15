@@ -1,16 +1,11 @@
-from parserData import *
+import parserData
 import numpy as np
 from Bio.PDB import *
-import os
-import subprocess
 
 # protein = '1s5l'
 # structure = MMCIFParser().get_structure('1s5l', 's5/1s5l.cif')
-# print(structure)
-# # Run the bash script that converts the ENT file into a pure text file
-# print("start")
-# subprocess.call("toPDB.sh")
-# print("end")
+# pdb1s5l = str(structure)
+pdb1s5l = parserData.pdb1s5l
 
 coordinates = []
 elements = []
@@ -42,5 +37,6 @@ for row in coordinates:
 # shifted downwards to ensure a proper view of the molecule
 middleZ = (maxZ + minZ) / 2
 for row in coordinates:
-    row[2] = row[2] - middleZ
+    row[0] = row[0] - middleZ
+    row[1] = row[1] - middleZ
 coordinatesInNumpy, elemsInNumpy = np.array(coordinates), np.array(elements)

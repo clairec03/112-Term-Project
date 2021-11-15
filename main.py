@@ -22,9 +22,9 @@ class Protein(object):
 
     def scaleUp(self):
         entries = [[1.05, 0, 0, 0], 
-                    [0, 1.05, 0, 0],
-                    [0, 0, 1.05, 0],
-                    [0, 0, 0, 1]]
+                   [0, 1.05, 0, 0],
+                   [0, 0, 1.05, 0],
+                   [0, 0, 0, 1]]
         scaleUpMatrix = np.array(entries)
         product = np.matmul(scaleUpMatrix, self.coordinate)
         self.coordinate = product
@@ -38,34 +38,33 @@ class Protein(object):
         product = np.matmul(scaleUpMatrix, self.coordinate)
         self.coordinate = product
 
+    def rotateAroundX(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), 0, -math.sin(sign * math.pi / 12), 0],
+                   [0, 1, 0, 0],
+                   [math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
+    def rotateAroundY(self, sign):
+        entries = [[1, 0, 0, 0],
+                   [0, math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0],
+                   [0, -math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
     def rotateAroundZ(self, sign):
         entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
-                    [0, 1, 0, 0],
-                    [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
-                    [0, 0, 0, 1]]
-        rotateMatrix = np.array(entries)
-        product = np.matmul(rotateMatrix, self.coordinate)
-        self.coordinate = product
-    
-    def rotateAroundX(self, sign):
-        entries = [[1, 0, math.sin(sign * math.pi / 12), 0],
-                    [0, 1, 0, 0],
-                    [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
-                    [0, 0, 0, 1]]
-        rotateMatrix = np.array(entries)
-        product = np.matmul(rotateMatrix, self.coordinate)
-        self.coordinate = product
-
-    def rotateAroundY(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
-                    [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 1, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1]]
+                   [0, 1, 0, 0],
+                   [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
         rotateMatrix = np.array(entries)
         product = np.matmul(rotateMatrix, self.coordinate)
         self.coordinate = product
 
 def appStarted(app):
+    app.inputs = []
     app.atoms = list()
     #            C, H, O, N, P, S
     elemCount = [0, 0, 0, 0, 0, 0]
@@ -92,15 +91,14 @@ def appStarted(app):
     app.percent['Nitrogen'] = 100 * elemCount[3] / totalCount
     app.percent['Phosphorus'] = 100 * elemCount[4] / totalCount
     app.percent['Sulfur'] = 100 * elemCount[5] / totalCount
-    app.level = -10
+    app.level = 30
     app.isTimerFired = False
-    app.viewerCoords = (100, 100, 100)
+    app.viewerCoords = (500, 500, 500)
     url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
     app.image_home = app.loadImage(url_home)
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
     url_design_scissors = "https://www.sciencenewsforstudents.org/wp-content/uploads/2019/11/080819_ti_crisprsicklecell_feat-1028x579-1028x579.jpg"
     image_design_scissors = app.loadImage(url_design_scissors)
-    # app.organism_image = 
     mouse = app.scaleImage(image_design_scissors, 1/3)
     app.image_mouse = mouse.crop((200, 200, 400, 579))
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
@@ -113,6 +111,8 @@ def appStarted(app):
                             3.2 * app.height/4)
     app.buttonSettings = (app.width / 10, app.height / 8, 
                           1.1 * app.width / 10, 1.08 * app.height / 8,)
+    app.buttonInput = (app.width / 6, 7 * app.height / 8,
+                            1.2 * app.width / 6, 7.5 * app.height / 8)
     app.dna_bases = {"adenine", "guanine", "cytosine", "thymine"}
     app.rna_bases = {"adenine", "guanine", "cytosine", "uracil"}
     app.amino_acids = {"ala", "arg", "asn", "asp", "cys", "gln", "glu", "gly", 
@@ -137,6 +137,7 @@ def resetApp(app):
     app.isIntroPage = False 
     app.drawVisualPage = False
     app.drawCustomSeqPage = False
+    app.isVisualPage = False
   
 def keyPressed(app, event):
     if event.key == "+":
@@ -149,14 +150,44 @@ def keyPressed(app, event):
             atom.scaleDown()
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
         app.level -= 1
-    elif event.key == "Left":
-        for atom in app.atoms:
-            atom.rotateAroundZ(-1)
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    elif event.key == "Right":
-        for atom in app.atoms:
-            atom.rotateAroundZ(1)
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    elif app.isVisualPage:
+        if event.key == "Left":
+            if app.isRotatingX:
+                for atom in app.atoms:
+                    atom.rotateAroundX(-1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                    print("apply rotation matrix around the x axis")
+            elif app.isRotatingY:
+                for atom in app.atoms:
+                    atom.rotateAroundY(-1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                    print("apply rotation matrix around the y axis")
+            elif app.isRotatingZ:
+                for atom in app.atoms:
+                    atom.rotateAroundZ(-1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                    print("apply rotation matrix around the z axis")
+        elif event.key == "Right":
+            if app.isRotatingX:
+                for atom in app.atoms:
+                    atom.rotateAroundX(1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+            elif app.isRotatingY:
+                for atom in app.atoms:
+                    atom.rotateAroundY(1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+            elif app.isRotatingZ:
+                for atom in app.atoms:
+                    atom.rotateAroundZ(1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    # elif event.key == "Left":
+    #     for atom in app.atoms:
+    #         atom.rotateAroundZ(-1)
+    #         atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    # elif event.key == "Right":
+    #     for atom in app.atoms:
+    #         atom.rotateAroundZ(1)
+    #         atom.coordinate2D = threeDToTwoD(atom.coordinate)
     elif event.key == "r":
         app.isTimerFired = not app.isTimerFired
     elif not app.isHelpPage and event.key == "h":
@@ -166,38 +197,14 @@ def keyPressed(app, event):
     elif app.isHomepage:
         app.isHomepage = False
         app.isIntroPage = True
-    elif app.isVisualPage:
-        if event.key == "Left":
-            if app.isRotatingX:
-                for atom in app.atoms:
-                    atom.rotateAroundX(-1)
-            elif app.isRotatingY:
-                for atom in app.atoms:
-                    atom.rotateAroundY(-1)
-            elif app.isRotatingZ:
-                for atom in app.atoms:
-                    atom.rotateAroundZ(-1)
-        elif event.key == "Right":
-            if app.isRotatingX:
-                for atom in app.atoms:
-                    atom.rotateAroundX(1)
-            elif app.isRotatingY:
-                for atom in app.atoms:
-                    atom.rotateAroundY(1)
-            elif app.isRotatingZ:
-                for atom in app.atoms:
-                    atom.rotateAroundY(1)
-
-# def timerFired(app):
-#     while app.isTimerFired:
-#         for atom in app.atoms:
-#             atom.rotateAroundZ(-0.5)
-#             atom.coordinate2D = threeDToTwoD(atom.coordinate)
+    elif event.key == "I":
+            if app.wantInput == False:
+                app.wantInput = True
+                getUserInput(app,"hello")
 
 def getUserInput(app, prompt):
     if app.wantInput:
-        return simpledialog.askstring('getUserInput', prompt)
-    # app.timerDelay = 10000
+        app.inputs.append(app.getUserInput(prompt))
     app.wantInput = False
 
 def mousePressed(app, event):
@@ -219,17 +226,30 @@ def mousePressed(app, event):
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
         if inButton(event, app.buttonX):
-            app.isRotatingX = True
-            app.isRotatingY = False
-            app.isRotatingZ = False
+            print("now rotating around the x axis")
+            rotateX(app)
         elif inButton(event, app.buttonY):
-            app.isRotatingX = False
-            app.isRotatingY = True
-            app.isRotatingZ = False
+            print("now rotating around the y axis")
         elif inButton(event, app.buttonZ):
+            print("now rotating around the z axis")
             app.isRotatingX = False
             app.isRotatingY = False
             app.isRotatingZ = True
+
+def rotateX(app):
+    app.isRotatingX = True
+    app.isRotatingY = False
+    app.isRotatingZ = False
+
+def rotateY(app):
+    app.isRotatingX = False
+    app.isRotatingY = True
+    app.isRotatingZ = False
+
+def rotateZ(app):
+    app.isRotatingX = False
+    app.isRotatingY = False
+    app.isRotatingZ = True
 
 def goToDesignPage(app):
     app.isIntropage = False
@@ -257,6 +277,9 @@ def redrawAll(app, canvas):
     elif app.isIntroPage:
         drawIntroPage(app, canvas)
         drawHelpHint(app, canvas, "RoyalBlue4")
+        canvas.create_rectangle(app.width / 6, 7 * app.height / 8,
+                            1.2 * app.width / 6, 7.5 * app.height / 8,
+                            fill = "red")
     elif app.isVisualPage:
         drawVisualPage(app, canvas)
     elif app.isHelpPage:
@@ -331,7 +354,7 @@ def drawDesignPage(app, canvas):
     for i in range(len(seq)):
         t = i * spacing 
         x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
-        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height / 4
         if x < y:
             canvas.create_line(t, x, t, y)
         else: 
@@ -383,7 +406,6 @@ def drawVisualPage(app, canvas):
     drawReturnButton(app, canvas)
     drawAxes(app, canvas)
     for atom in app.atoms:
-        # Converts 2D coordinates into TK coordinates
         coordinate = (atom.coordinate2D[0] + app.width / 2, 
                       atom.coordinate2D[1] + app.width / 3)
         if atom.atom == 'C':
@@ -429,8 +451,6 @@ def drawVisualPage(app, canvas):
                         text = "Z", font = "Arial 15 bold", fill = "snow")
 
 def drawCustomSeqPage(app, canvas):
-        # canvas.create_image(3 * app.width / 4 , app.height / 5, 
-    #                     image=ImageTk.PhotoImage(app.organism_image))
     drawReturnButton(app, canvas)
     dna_dict = sample_dna_info
     counter = 0
@@ -506,33 +526,33 @@ def drawAxes(app, canvas):
 def drawCarbon(app, canvas, coordinate, atom):
     coords = atom.coordinate[:3]
     myCoords = app.viewerCoords
-    rgbScalar = int(abs(5 * getNorm(myCoords[0] - coords[0], myCoords[1] - coords[1], myCoords[2] - coords[2])))
-    r = 0.9 * 77/73 + 0.15 * app.level
+    rgbScalar = int(getNorm(myCoords[0] - coords[0], myCoords[1] - coords[1], myCoords[2] - coords[2])/5)
+    r = 0.9 * 77/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = f'#{toHex((rgbScalar, rgbScalar, rgbScalar))}')
 
 def drawHydrogen(app, canvas, coordinate, atom):
-    r = 37/73 + 0.15 * app.level
+    r = 37/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'floral white')
 
 def drawOxygen(app, canvas, coordinate, atom):
-    r = 73/73 + 0.15 * app.level
+    r = 73/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'IndianRed3')
 
 def drawNitrogen(app, canvas, coordinate, atom):
-    r = 70/73 + 0.15 * app.level
+    r = 70/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'RoyalBlue3')
 
 def drawPhosphorus(app, canvas, coordinate, atom):
-    r = 110/73 + 0.15 * app.level
+    r = 110/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'gold', outline = "gold")
 
 def drawSulfur(app, canvas, coordinate, atom):
-    r = 1.2 * 103/73 + 0.15 * app.level
+    r = 1.5 * 103/73 + 0.05 * app.level
     (x, y) = (coordinate[0], coordinate[1])
     canvas.create_oval(x-r, y-r, x+r, y+r, fill = 'LightPink1')
 
