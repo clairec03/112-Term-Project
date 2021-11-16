@@ -7,6 +7,7 @@ from projections import *
 import math
 import numpy as np
 import parser
+from functools import cmp_to_key
 
 coordinatesInNumpy = parser.coordinatesInNumpy
 elemsInNumpy = parser.elemsInNumpy
@@ -39,9 +40,9 @@ class Protein(object):
         self.coordinate = product
 
     def rotateAroundX(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), 0, -math.sin(sign * math.pi / 12), 0],
-                   [0, 1, 0, 0],
-                   [math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
+                   [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
+                   [0, 0, 1, 0],
                    [0, 0, 0, 1]]
         rotateMatrix = np.array(entries)
         product = np.matmul(rotateMatrix, self.coordinate)
@@ -127,6 +128,22 @@ def appStarted(app):
                             6.5 * app.width / 7, 2.5 * app.height / 5)
     app.buttonZ = (6 * app.width / 7, 2.6 * app.height / 5, 
                             6.5 * app.width / 7, 2.8 * app.height / 5)
+    app.buttonXColor = "DeepSkyBlue2"
+    app.buttonYColor = "DeepSkyBlue2"
+    app.buttonZColor = "DeepSkyBlue2"
+    app.upButtonColor = "SteelBlue1"
+    app.downButtonColor = "SteelBlue1"
+    app.leftButtonColor = "SteelBlue1"
+    app.rightButtonColor = "SteelBlue1"
+    app.leftArrowCoords = (6.9 * app.width / 8 - 30, 7 * app.height / 8 - 10,
+                           6.9 * app.width / 8, 7 * app.height / 8 + 30)
+    app.rightArrowCoords = (7.1 * app.width / 8 + 20, 7 * app.height / 8 - 10,
+                            7.1 * app.width / 8 + 50, 7 * app.height / 8 + 30)
+    app.downArrowCoords = (7 * app.width / 8 - 10, 7.3 * app.height / 8,
+                           7 * app.width / 8 + 30, 7.3 * app.height / 8 + 30)
+    app.upArrowCoords = (7 * app.width / 8 - 10, 6.9 * app.height / 8 - 30,
+                         7 * app.width / 8 + 30, 6.9 * app.height / 8)
+    app.isRotatingX, app.isRotatingY, app.isRotatingZ = False, False, False
     resetApp(app)
 
 def resetApp(app):
@@ -139,6 +156,11 @@ def resetApp(app):
     app.drawCustomSeqPage = False
     app.isVisualPage = False
   
+# Custom compare function
+def compare(atom1, atom2):
+    return (getNorm(atom1.coordinate[0], atom1.coordinate[1], atom1.coordinate[2]) 
+        - getNorm(atom2.coordinate[0], atom2.coordinate[1], atom2.coordinate[2]))
+
 def keyPressed(app, event):
     if event.key == "+":
         for atom in app.atoms:
@@ -156,41 +178,72 @@ def keyPressed(app, event):
                 for atom in app.atoms:
                     atom.rotateAroundX(-1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
-                    print("apply rotation matrix around the x axis")
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
             elif app.isRotatingY:
                 for atom in app.atoms:
                     atom.rotateAroundY(-1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
-                    print("apply rotation matrix around the y axis")
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
             elif app.isRotatingZ:
                 for atom in app.atoms:
                     atom.rotateAroundZ(-1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
-                    print("apply rotation matrix around the z axis")
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+            else:
+                for atom in app.atoms:
+                    atom.rotateAroundZ(-1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                    app.upButtonColor = "SteelBlue1"
+                    app.downButtonColor = "SteelBlue1"
+                    app.leftButtonColor = "SteelBlue4"
+                    app.rightButtonColor = "SteelBlue1"
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
         elif event.key == "Right":
             if app.isRotatingX:
                 for atom in app.atoms:
                     atom.rotateAroundX(1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
             elif app.isRotatingY:
                 for atom in app.atoms:
                     atom.rotateAroundY(1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
             elif app.isRotatingZ:
                 for atom in app.atoms:
                     atom.rotateAroundZ(1)
                     atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    # elif event.key == "Left":
-    #     for atom in app.atoms:
-    #         atom.rotateAroundZ(-1)
-    #         atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    # elif event.key == "Right":
-    #     for atom in app.atoms:
-    #         atom.rotateAroundZ(1)
-    #         atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    elif event.key == "r":
-        app.isTimerFired = not app.isTimerFired
-    elif not app.isHelpPage and event.key == "h":
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+            else:
+                for atom in app.atoms:
+                    atom.rotateAroundZ(1)
+                    atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                    app.upButtonColor = "SteelBlue1"
+                    app.downButtonColor = "SteelBlue1"
+                    app.leftButtonColor = "SteelBlue1"
+                    app.rightButtonColor = "SteelBlue4"
+                app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+        elif event.key == "Up":
+            for atom in app.atoms:
+                atom.rotateAroundX(-1)
+                atom.rotateAroundY(-1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue4"
+                app.downButtonColor = "SteelBlue1"
+                app.leftButtonColor = "SteelBlue1"
+                app.rightButtonColor = "SteelBlue1"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+        elif event.key == "Down":
+            for atom in app.atoms:
+                atom.rotateAroundX(1)
+                atom.rotateAroundY(1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue1"
+                app.downButtonColor = "SteelBlue4"
+                app.leftButtonColor = "SteelBlue1"
+                app.rightButtonColor = "SteelBlue1"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+    elif event.key == "h":
         app.isHelpPage = True
     elif app.isHelpPage and event.key == "x":
         app.isHelpPage = False
@@ -226,30 +279,76 @@ def mousePressed(app, event):
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
         if inButton(event, app.buttonX):
-            print("now rotating around the x axis")
             rotateX(app)
         elif inButton(event, app.buttonY):
-            print("now rotating around the y axis")
+            rotateY(app)
         elif inButton(event, app.buttonZ):
-            print("now rotating around the z axis")
-            app.isRotatingX = False
-            app.isRotatingY = False
-            app.isRotatingZ = True
+            rotateZ(app)
+        elif inButton(event, app.leftArrowCoords):
+            for atom in app.atoms:
+                atom.rotateAroundZ(-1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue1"
+                app.downButtonColor = "SteelBlue1"
+                app.leftButtonColor = "SteelBlue3"
+                app.rightButtonColor = "SteelBlue1"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+        elif inButton(event, app.rightArrowCoords):
+            for atom in app.atoms:
+                atom.rotateAroundZ(1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue1"
+                app.downButtonColor = "SteelBlue1"
+                app.leftButtonColor = "SteelBlue1"
+                app.rightButtonColor = "SteelBlue3"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+        elif inButton(event, app.upArrowCoords):
+            for atom in app.atoms:
+                atom.rotateAroundX(1)
+                atom.rotateAroundY(1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue3"
+                app.downButtonColor = "SteelBlue1"
+                app.leftButtonColor = "SteelBlue1"
+                app.rightButtonColor = "SteelBlue1"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+        elif inButton(event, app.downArrowCoords):
+            for atom in app.atoms:
+                atom.rotateAroundX(-1)
+                atom.rotateAroundY(-1)
+                atom.coordinate2D = threeDToTwoD(atom.coordinate)
+                app.upButtonColor = "SteelBlue1"
+                app.downButtonColor = "SteelBlue3"
+                app.leftButtonColor = "SteelBlue1"
+                app.rightButtonColor = "SteelBlue1"
+            app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+
+def mouseDragged(app, event): 
+    pass
 
 def rotateX(app):
     app.isRotatingX = True
     app.isRotatingY = False
     app.isRotatingZ = False
+    app.buttonXColor = "DeepSkyBlue4"
+    app.buttonYColor = "DeepSkyBlue2"
+    app.buttonZColor = "DeepSkyBlue2"
 
 def rotateY(app):
     app.isRotatingX = False
     app.isRotatingY = True
     app.isRotatingZ = False
+    app.buttonXColor = "DeepSkyBlue2"
+    app.buttonYColor = "DeepSkyBlue4"
+    app.buttonZColor = "DeepSkyBlue2"
 
 def rotateZ(app):
     app.isRotatingX = False
     app.isRotatingY = False
     app.isRotatingZ = True
+    app.buttonXColor = "DeepSkyBlue2"
+    app.buttonYColor = "DeepSkyBlue2"
+    app.buttonZColor = "DeepSkyBlue4"
 
 def goToDesignPage(app):
     app.isIntropage = False
@@ -277,13 +376,55 @@ def redrawAll(app, canvas):
     elif app.isIntroPage:
         drawIntroPage(app, canvas)
         drawHelpHint(app, canvas, "RoyalBlue4")
-        canvas.create_rectangle(app.width / 6, 7 * app.height / 8,
-                            1.2 * app.width / 6, 7.5 * app.height / 8,
-                            fill = "red")
     elif app.isVisualPage:
         drawVisualPage(app, canvas)
-    elif app.isHelpPage:
+    if app.isHelpPage:
         drawHelpPage(app,canvas)
+
+def drawCenterButton(app, canvas):
+    canvas.create_rectangle(7 * app.width / 8, 7 * app.height / 8, 
+                            20 + 7 * app.width / 8, 20 + 7 * app.height /8, 
+                            fill = "DeepSkyBlue4")
+
+def drawLeftArrow(app, canvas):
+    xOrigin, yOrigin = 6.9 * app.width / 8, 7 * app.height / 8
+    canvas.create_polygon(xOrigin, yOrigin,
+                          xOrigin - 20, yOrigin,
+                          xOrigin - 20, yOrigin - 10,
+                          xOrigin - 30, yOrigin + 10,
+                          xOrigin - 20, yOrigin + 30,
+                          xOrigin - 20, yOrigin + 20,
+                          xOrigin, yOrigin + 20, fill = f"{app.leftButtonColor}")
+
+def drawRightArrow(app, canvas):
+    xOrigin, yOrigin = 7.1 * app.width / 8 + 20, 7 * app.height / 8
+    canvas.create_polygon(xOrigin, yOrigin,
+                          xOrigin + 20, yOrigin,
+                          xOrigin + 20, yOrigin - 10,
+                          xOrigin + 30, yOrigin + 10,
+                          xOrigin + 20, yOrigin + 30,
+                          xOrigin + 20, yOrigin + 20,
+                          xOrigin, yOrigin + 20, fill = f"{app.rightButtonColor}")
+
+def drawDownArrow(app, canvas):
+    xOrigin, yOrigin = 7 * app.width / 8, 7.3 * app.height / 8
+    canvas.create_polygon(xOrigin, yOrigin,
+                          xOrigin, yOrigin + 20,
+                          xOrigin - 10, yOrigin + 20,
+                          xOrigin + 10, yOrigin + 30,
+                          xOrigin + 30, yOrigin + 20,
+                          xOrigin + 20, yOrigin + 20,
+                          xOrigin + 20, yOrigin, fill = f"{app.downButtonColor}")
+
+def drawUpArrow(app, canvas):
+    xOrigin, yOrigin = 7 * app.width / 8, 6.9 * app.height / 8
+    canvas.create_polygon(xOrigin, yOrigin,
+                          xOrigin, yOrigin - 20,
+                          xOrigin - 10, yOrigin - 20,
+                          xOrigin + 10, yOrigin - 30,
+                          xOrigin + 30, yOrigin - 20,
+                          xOrigin + 20, yOrigin - 20,
+                          xOrigin + 20, yOrigin, fill = f"{app.upButtonColor}")
 
 def inButton(event, button):
     return (button[0] <= event.x <= button[2] and 
@@ -370,7 +511,6 @@ def drawDesignPage(app, canvas):
                                 outline = f"#{toHex(toRGB(t))}")
         # Second strand of sugar-phosphate backbone
         y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
-        # if y < 500 and (t % (1000//3) < (1000//6)):
         canvas.create_oval(t-r, y-r, t+r, y+r, fill = f"#{toHex(toRGB(t))}", 
                             outline=f"#{toHex(toRGB(t))}")
     for i in range(len(seq)):
@@ -428,27 +568,37 @@ def drawVisualPage(app, canvas):
                     text = f"{element}: {app.percent[element]}%", anchor = "w", 
                     fill = "mint cream", font = "Arial 15 bold")
         counter += 1
+    # Tiny note for buttons
+    canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
+                       text = "Select axis of rotation", fill = "snow",
+                       font = "Arial 15", anchor = "w")
     # Button X
     canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
                             app.buttonX[3],
-                            fill = "DeepSkyBlue2")
+                            fill = f"{app.buttonXColor}")
     canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
                         (app.buttonX[1] + app.buttonX[3])/2,
                         text = "X", font = "Arial 15 bold", fill = "snow")
     # Button Y
     canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
                             app.buttonY[3],
-                            fill = "DeepSkyBlue3")
+                            fill = f"{app.buttonYColor}")
     canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
                         (app.buttonY[1] + app.buttonY[3])/2,
                         text = "Y", font = "Arial 15 bold", fill = "snow")
     # Button Z
     canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
                             app.buttonZ[3],
-                            fill = "DeepSkyBlue4")
+                            fill = f"{app.buttonZColor}")
     canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
                         (app.buttonZ[1] + app.buttonZ[3])/2,
                         text = "Z", font = "Arial 15 bold", fill = "snow")
+    # Draw arrows for the user to rotate the protein
+    drawCenterButton(app, canvas)
+    drawLeftArrow(app, canvas)
+    drawRightArrow(app, canvas)
+    drawUpArrow(app, canvas)
+    drawDownArrow(app, canvas)
 
 def drawCustomSeqPage(app, canvas):
     drawReturnButton(app, canvas)
@@ -485,7 +635,7 @@ def drawReturnButton(app,canvas):
                             buttonReturn[3], fill = "RoyalBlue3")
     canvas.create_text((buttonReturn[0]+buttonReturn[2])/2, 
                         (buttonReturn[1]+buttonReturn[3])/2,
-                        text = "Return", font = "Arial 20",fill="snow")
+                        text = "Return", font = "Arial 20", fill = "snow")
 
 def drawBackground(app, canvas, color):
     canvas.create_rectangle(0, 0, app.width, app.height, fill = f"{color}")
@@ -506,12 +656,6 @@ def threeDToTwoD(coordinate):
     projectToXY = np.array(projections)
     result = np.matmul(projectToXY, product)
     return result[0:2]
-
-# def twoDToTK(app, coordinate):
-#     # X remains unchanged
-#     x, oldY = coordinate[0], coordinate[1]
-#     newY = -oldY + app.height / 2
-#     return [x, newY]
 
 def drawAxes(app, canvas):
     # X axis
