@@ -1,3 +1,4 @@
 # 112-Term-Project
-# Claire Chen
-# Andrew ID: ccz
+Claire Chen
+
+Andrew ID: ccz
