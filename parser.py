@@ -43,7 +43,6 @@ for line in pdb1s5l.split("\n"):
                 entries.append(entry)
         entries = entries[1:3] + entries[4:6] + [entries[7]] + [entries[-1]]
         helices[entries[0]] = entries[1:]
-
     elif line.startswith("SHEET"):
         pass
         # entries = line.split(" ")
@@ -52,8 +51,8 @@ for line in pdb1s5l.split("\n"):
         #     if entry != "" and len(entry) != 1 and entry != entries[1]:
         #         pass
 
-print(aminoAcidSeq)
-print(helices)
+# print(aminoAcidSeq)
+# print(helices)
 # print(sheets)
 
 # for line in pdb1s5l.split("\n"):

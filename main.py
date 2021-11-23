@@ -64,9 +64,9 @@ def appStarted(app):
                             1.2 * app.width / 6, 7.5 * app.height / 8)
     app.dna_bases = {"adenine", "guanine", "cytosine", "thymine"}
     app.rna_bases = {"adenine", "guanine", "cytosine", "uracil"}
-    app.amino_acids = {"ala", "arg", "asn", "asp", "cys", "gln", "glu", "gly", 
-                       "his", "ile", "leu", "lys", "met", "phe", "pro", "ser",
-                       "thr", "trp", "tyr", "val"}
+    app.amino_acids = {"ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", 
+                       "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER",
+                       "THR", "TRP", "TYR", "VAL"}
     app.width, app.height = 1000, 800
     app.wantInput = False
     app.timesteps = np.arange(0, 1000, .3)
