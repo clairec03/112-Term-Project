@@ -12,58 +12,6 @@ from functools import cmp_to_key
 coordinatesInNumpy = parser.coordinatesInNumpy
 elemsInNumpy = parser.elemsInNumpy
 
-class Protein(object):
-    def __init__(self, coordinate, atom):
-        location = [coordinate[0], coordinate[1], 
-                    coordinate[2], coordinate[3]]
-        self.coordinate = np.array(location)
-        self.staticCoords = np.array(location)
-        self.coordinate2D = threeDToTwoD(self.coordinate)
-        self.atom = atom
-
-    def scaleUp(self):
-        entries = [[1.05, 0, 0, 0], 
-                   [0, 1.05, 0, 0],
-                   [0, 0, 1.05, 0],
-                   [0, 0, 0, 1]]
-        scaleUpMatrix = np.array(entries)
-        product = np.matmul(scaleUpMatrix, self.coordinate)
-        self.coordinate = product
-    
-    def scaleDown(self):
-        entries = [[0.95, 0, 0, 0], 
-                   [0, 0.95, 0, 0],
-                   [0, 0, 0.95, 0],
-                   [0, 0, 0, 1]]
-        scaleUpMatrix = np.array(entries)
-        product = np.matmul(scaleUpMatrix, self.coordinate)
-        self.coordinate = product
-
-    def rotateAroundX(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
-                   [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
-                   [0, 0, 1, 0],
-                   [0, 0, 0, 1]]
-        rotateMatrix = np.array(entries)
-        product = np.matmul(rotateMatrix, self.coordinate)
-        self.coordinate = product
-    def rotateAroundY(self, sign):
-        entries = [[1, 0, 0, 0],
-                   [0, math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0],
-                   [0, -math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0],
-                   [0, 0, 0, 1]]
-        rotateMatrix = np.array(entries)
-        product = np.matmul(rotateMatrix, self.coordinate)
-        self.coordinate = product
-    def rotateAroundZ(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
-                   [0, 1, 0, 0],
-                   [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
-                   [0, 0, 0, 1]]
-        rotateMatrix = np.array(entries)
-        product = np.matmul(rotateMatrix, self.coordinate)
-        self.coordinate = product
-
 def appStarted(app):
     app.inputs = []
     app.atoms = list()
@@ -628,7 +576,7 @@ def drawCenter1Button(app, canvas, color):
     button1 = app.buttonCenter1
     canvas.create_rectangle(button1[0], button1[1], button1[2], button1[3],
                             fill = f"{color}")
-                            
+
 def drawReturnButton(app,canvas):
     buttonReturn = app.buttonTopLeft
     canvas.create_rectangle(buttonReturn[0], buttonReturn[1], buttonReturn[2], 

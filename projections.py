@@ -18,14 +18,15 @@ class Protein(object):
         location = [coordinate[0], coordinate[1], 
                     coordinate[2], coordinate[3]]
         self.coordinate = np.array(location)
+        self.staticCoords = np.array(location)
         self.coordinate2D = threeDToTwoD(self.coordinate)
         self.atom = atom
 
     def scaleUp(self):
         entries = [[1.05, 0, 0, 0], 
-                    [0, 1.05, 0, 0],
-                    [0, 0, 1.05, 0],
-                    [0, 0, 0, 1]]
+                   [0, 1.05, 0, 0],
+                   [0, 0, 1.05, 0],
+                   [0, 0, 0, 1]]
         scaleUpMatrix = np.array(entries)
         product = np.matmul(scaleUpMatrix, self.coordinate)
         self.coordinate = product
@@ -39,52 +40,30 @@ class Protein(object):
         product = np.matmul(scaleUpMatrix, self.coordinate)
         self.coordinate = product
 
-    def rotateAroundZ(self, sign):
-        entries = [[math.cos(sign * math.pi / 12), 0 , math.sin(sign * math.pi / 12), 0],
-                    [0, 1, 0, 0],
-                    [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
-                    [0, 0, 0, 1]]
+    def rotateAroundX(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
+                   [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
+                   [0, 0, 1, 0],
+                   [0, 0, 0, 1]]
         rotateMatrix = np.array(entries)
         product = np.matmul(rotateMatrix, self.coordinate)
         self.coordinate = product
-
-def appStarted(app):
-    app.atoms = list()
-    app.coordinates, app.elems = coordinatesInNumpy, elemsInNumpy
-    for i in range(len(coordinatesInNumpy)):
-        app.atoms.append(Protein(app.coordinates[i], app.elems[i]))
-    app.level = 0
-    app.isTimerFired = False
-
-# def timerFired(app):
-#     if app.isTimerFired:
-#         for atom in app.atoms:
-#             atom.rotateAroundZ(-0.1)
-#             atom.coordinate2D = threeDToTwoD(atom.coordinate)
-
-def keyPressed(app, event):
-    if event.key == "+":
-        for atom in app.atoms:
-            atom.scaleUp()
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
-        app.level += 1
-    elif event.key == "-":
-        for atom in app.atoms:
-            atom.scaleDown()
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
-        app.level -= 1
-    elif event.key == "Left":
-        for atom in app.atoms:
-            atom.rotateAroundZ(-1)
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    elif event.key == "Right":
-        for atom in app.atoms:
-            atom.rotateAroundZ(1)
-            atom.coordinate2D = threeDToTwoD(atom.coordinate)
-    elif event.key == "R":
-        app.isTimerFired = not app.isTimerFired
-    elif event.key == "H":
-        app.isHelpPage = not app.isHelpPage
+    def rotateAroundY(self, sign):
+        entries = [[1, 0, 0, 0],
+                   [0, math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0],
+                   [0, -math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
+    def rotateAroundZ(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
+                   [0, 1, 0, 0],
+                   [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        product = np.matmul(rotateMatrix, self.coordinate)
+        self.coordinate = product
 
 def threeDToTwoD(coordinate):
     # Matrix from https://en.wikipedia.org/wiki/Isometric_projection
@@ -102,12 +81,6 @@ def threeDToTwoD(coordinate):
     projectToXY = np.array(projections)
     result = np.matmul(projectToXY, product)
     return result[0:2]
-
-def twoDToTK(app, coordinate):
-    # X remains unchanged
-    x, oldY = coordinate[0], coordinate[1]
-    newY = -oldY + app.height / 2
-    return [x, newY]
 
 def redrawAll(app, canvas):
     drawAxes(app, canvas)
