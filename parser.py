@@ -52,18 +52,8 @@ for line in pdb1s5l.split("\n"):
         #         pass
 
 # print(aminoAcidSeq)
-# print(helices)
+print(helices)
 # print(sheets)
-
-# for line in pdb1s5l.split("\n"):
-#     if line.startswith("TER"):
-#         break
-#     elif line.startswith("ATOM"):
-
-
-
-# sheetsCoords = []
-
 
 testArray = np.array(coordinates)
 # Finds the z-coordinate of the lowest and highest atom
