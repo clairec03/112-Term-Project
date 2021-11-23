@@ -14,6 +14,7 @@ helices = dict()
 #  e.g.   {1:     ["ASN",          68,         "VAL",    78,    10 ]}
 sheets = dict()
 aminoAcidSeq = dict()
+sheetsCounter = 0
 
 for line in pdb1s5l.split("\n"):
     if line.startswith("TER"):
@@ -44,7 +45,20 @@ for line in pdb1s5l.split("\n"):
         entries = entries[1:3] + entries[4:6] + [entries[7]] + [entries[-1]]
         helices[entries[0]] = entries[1:]
     elif line.startswith("SHEET"):
-        pass
+        entries = []
+        for entry in line.split(" "):
+            if entry != "" and entry != "SHEET":
+                entries.append(entry)
+        if len(entries[4]) > 1:
+            continue
+        elif len(entries) > 17:
+            sheetsCounter += 1
+            sheets[str(sheetsCounter)] = [entries[3]] + entries[5:7] + [entries[8]]
+            sheetsCounter += 1
+            sheets[str(sheetsCounter)] = [entries[11]] + [entries[13]] + [entries[15]] + [entries[17]]
+        elif len(entries) > 8:
+            sheetsCounter += 1
+            sheets[str(sheetsCounter)] = [entries[3]] + entries[5:7] + [entries[8]]
         # entries = line.split(" ")
         # print(entries)
         # for entry in entries:
@@ -52,8 +66,8 @@ for line in pdb1s5l.split("\n"):
         #         pass
 
 # print(aminoAcidSeq)
-print(helices)
-# print(sheets)
+# print(helices)
+print(sheets)
 
 testArray = np.array(coordinates)
 # Finds the z-coordinate of the lowest and highest atom

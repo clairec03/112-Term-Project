@@ -8,9 +8,13 @@ import math
 import numpy as np
 import parser
 from functools import cmp_to_key
+from PIL import Image
 
 coordinatesInNumpy = parser.coordinatesInNumpy
 elemsInNumpy = parser.elemsInNumpy
+aminoAcidSeq = parser.aminoAcidSeq
+helices = parser.helices
+sheets = parser.sheets
 
 def appStarted(app):
     app.inputs = []
@@ -76,6 +80,8 @@ def appStarted(app):
                             6.5 * app.width / 7, 2.5 * app.height / 5)
     app.buttonZ = (6 * app.width / 7, 2.6 * app.height / 5, 
                             6.5 * app.width / 7, 2.8 * app.height / 5)
+    app.buttonSwitch = (6 * app.width / 7, 3 * app.height / 5, 
+                            6.5 * app.width / 7, 3.2 * app.height / 5)
     app.buttonXColor = "DeepSkyBlue2"
     app.buttonYColor = "DeepSkyBlue2"
     app.buttonZColor = "DeepSkyBlue2"
@@ -83,6 +89,7 @@ def appStarted(app):
     app.downButtonColor = "SteelBlue1"
     app.leftButtonColor = "SteelBlue1"
     app.rightButtonColor = "SteelBlue1"
+    app.buttonSwitchColor = "RosyBrown2"
     app.leftArrowCoords = (6.9 * app.width / 8 - 30, 7 * app.height / 8 - 10,
                            6.9 * app.width / 8, 7 * app.height / 8 + 30)
     app.rightArrowCoords = (7.1 * app.width / 8 + 20, 7 * app.height / 8 - 10,
@@ -92,7 +99,62 @@ def appStarted(app):
     app.upArrowCoords = (7 * app.width / 8 - 10, 6.9 * app.height / 8 - 30,
                          7 * app.width / 8 + 30, 6.9 * app.height / 8)
     app.isRotatingX, app.isRotatingY, app.isRotatingZ = False, False, False
+    # Source of image: https://i.stack.imgur.com/T57R5.png (rescaled)
+    app.image_helix = Image.open("helix.png")
+    app.structHelix = []
+    for helix in helices:
+        startHelixPos, endHelixPos = helices[helix][1], helices[helix][3]
+        if startHelixPos in aminoAcidSeq and endHelixPos in aminoAcidSeq:
+            startAAPos = aminoAcidSeq[startHelixPos][0]
+            endAAPos = aminoAcidSeq[endHelixPos][-1]
+            startPos = threeDToTwoD(startAAPos)
+            endPos = threeDToTwoD(endAAPos)
+            app.structHelix.append((startPos, endPos))
+    # Source of image: myself (using Adobe Sketch)
+    app.image_sheet = Image.open("sheet.png")
+    app.structSheet = []
+    for sheet in sheets:
+        startSheetPos, endSheetPos = sheets[sheet][1], sheets[sheet][3]
+        if startSheetPos in aminoAcidSeq and endSheetPos in aminoAcidSeq:
+            startAAPos = aminoAcidSeq[startSheetPos][0]
+            endAAPos = aminoAcidSeq[endSheetPos][-1]
+            startPos = threeDToTwoD(startAAPos)
+            endPos = threeDToTwoD(endAAPos)
+            app.structSheet.append((startPos, endPos))
+    app.isAtomicModel = True
+    app.isSecondaryStruct = False
     resetApp(app)
+
+def mousedMoved(app, event):
+    if inButton(event, app.buttonCenter1):
+        app.isHomepage = False
+        app.isDesignPage = True
+    elif inButton(event, app.buttonTopLeft):
+        pass
+    elif inButton(event, app.buttonTopLeft):
+        pass
+    elif inButton(event, app.buttonBottomLeft):
+        pass
+    elif inButton(event, app.buttonBottomRight):
+        pass
+    elif inButton(event, app.buttonTopLeft):
+        pass
+    elif inButton(event, app.buttonX):
+        pass
+    elif inButton(event, app.buttonY):
+        pass
+    elif inButton(event, app.buttonZ):
+        pass
+    elif inButton(event, app.leftArrowCoords):
+        pass
+    elif inButton(event, app.rightArrowCoords):
+        pass
+    elif inButton(event, app.upArrowCoords):
+        pass
+    elif inButton(event, app.downArrowCoords):
+        pass
+    else:
+        pass
 
 def resetApp(app):
     # Homepage
@@ -209,6 +271,8 @@ def getUserInput(app, prompt):
     app.wantInput = False
 
 def mousePressed(app, event):
+    print(f"app.isAtomicModel is {app.isAtomicModel}")
+    print(f"app.isSecondaryStruct is {app.isSecondaryStruct}")
     if app.isHomepage:
         if inButton(event, app.buttonCenter1):
             app.isHomepage = False
@@ -224,6 +288,12 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomRight):
             goToVisualPage(app)
     elif app.isVisualPage:
+        if app.isAtomicModel and inButton(event, app.buttonSwitch):
+            app.isAtomicModel = False
+            app.isSecondaryStruct = True
+        elif app.isSecondaryStruct and inButton(event, app.buttonSwitch):
+            app.isSecondaryStruct = False
+            app.isAtomicModel = True
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
         if inButton(event, app.buttonX):
@@ -270,6 +340,7 @@ def mousePressed(app, event):
                 app.leftButtonColor = "SteelBlue1"
                 app.rightButtonColor = "SteelBlue1"
             app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
+    print(event)
 
 def mouseDragged(app, event): 
     pass
@@ -328,6 +399,8 @@ def redrawAll(app, canvas):
         drawVisualPage(app, canvas)
     if app.isHelpPage:
         drawHelpPage(app,canvas)
+    if app.isSecondaryStruct:
+        drawSecondaryStruct(app, canvas)
 
 def drawCenterButton(app, canvas):
     canvas.create_rectangle(7 * app.width / 8, 7 * app.height / 8, 
@@ -493,60 +566,112 @@ def drawVisualPage(app, canvas):
     drawBackground(app, canvas, "grey8")
     drawReturnButton(app, canvas)
     drawAxes(app, canvas)
-    for atom in app.atoms:
-        coordinate = (atom.coordinate2D[0] + app.width / 2, 
-                      atom.coordinate2D[1] + app.width / 3)
-        if atom.atom == 'C':
-            drawCarbon(app, canvas, coordinate, atom)
-        elif atom.atom == 'H':
-            drawHydrogen(app, canvas, coordinate, atom)
-        elif atom.atom == 'O':
-            drawOxygen(app, canvas, coordinate, atom)
-        elif atom.atom == 'N':
-            drawNitrogen(app, canvas, coordinate, atom)
-        elif atom.atom == 'P':
-            drawPhosphorus(app, canvas, coordinate, atom)
-        elif atom.atom == 'S':
-            drawSulfur(app, canvas, coordinate, atom)
-    canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
-    # Displays chemical composition
-    counter = 0
-    for element in app.percent:
-        canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 10, 
-                    text = f"{element}: {app.percent[element]}%", anchor = "w", 
-                    fill = "mint cream", font = "Arial 15 bold")
-        counter += 1
-    # Tiny note for buttons
-    canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
-                       text = "Select axis of rotation", fill = "snow",
-                       font = "Arial 15", anchor = "w")
-    # Button X
-    canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
-                            app.buttonX[3],
-                            fill = f"{app.buttonXColor}")
-    canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
-                        (app.buttonX[1] + app.buttonX[3])/2,
-                        text = "X", font = "Arial 15 bold", fill = "snow")
-    # Button Y
-    canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
-                            app.buttonY[3],
-                            fill = f"{app.buttonYColor}")
-    canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
-                        (app.buttonY[1] + app.buttonY[3])/2,
-                        text = "Y", font = "Arial 15 bold", fill = "snow")
-    # Button Z
-    canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
-                            app.buttonZ[3],
-                            fill = f"{app.buttonZColor}")
-    canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
-                        (app.buttonZ[1] + app.buttonZ[3])/2,
-                        text = "Z", font = "Arial 15 bold", fill = "snow")
-    # Draw arrows for the user to rotate the protein
-    drawCenterButton(app, canvas)
-    drawLeftArrow(app, canvas)
-    drawRightArrow(app, canvas)
-    drawUpArrow(app, canvas)
-    drawDownArrow(app, canvas)
+    if app.isAtomicModel:
+        for atom in app.atoms:
+            coordinate = (atom.coordinate2D[0] + app.width / 2, 
+                        atom.coordinate2D[1] + app.width / 3)
+            if atom.atom == 'C':
+                drawCarbon(app, canvas, coordinate, atom)
+            elif atom.atom == 'H':
+                drawHydrogen(app, canvas, coordinate, atom)
+            elif atom.atom == 'O':
+                drawOxygen(app, canvas, coordinate, atom)
+            elif atom.atom == 'N':
+                drawNitrogen(app, canvas, coordinate, atom)
+            elif atom.atom == 'P':
+                drawPhosphorus(app, canvas, coordinate, atom)
+            elif atom.atom == 'S':
+                drawSulfur(app, canvas, coordinate, atom)
+        canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
+        # Displays chemical composition
+        counter = 0
+        for element in app.percent:
+            canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 10, 
+                        text = f"{element}: {app.percent[element]}%", anchor = "w", 
+                        fill = "mint cream", font = "Arial 15 bold")
+            counter += 1
+        # Tiny note for buttons
+        canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
+                        text = "Select axis of rotation", fill = "snow",
+                        font = "Arial 15", anchor = "w")
+        # Button X
+        canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
+                                app.buttonX[3],
+                                fill = f"{app.buttonXColor}")
+        canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
+                            (app.buttonX[1] + app.buttonX[3])/2,
+                            text = "X", font = "Arial 15 bold", fill = "snow")
+        # Button Y
+        canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
+                                app.buttonY[3],
+                                fill = f"{app.buttonYColor}")
+        canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
+                            (app.buttonY[1] + app.buttonY[3])/2,
+                            text = "Y", font = "Arial 15 bold", fill = "snow")
+        # Button Z
+        canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
+                                app.buttonZ[3],
+                                fill = f"{app.buttonZColor}")
+        canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
+                            (app.buttonZ[1] + app.buttonZ[3])/2,
+                            text = "Z", font = "Arial 15 bold", fill = "snow")
+        # Draw arrows for the user to rotate the protein
+        drawCenterButton(app, canvas)
+        drawLeftArrow(app, canvas)
+        drawRightArrow(app, canvas)
+        drawUpArrow(app, canvas)
+        drawDownArrow(app, canvas)
+        drawSwitchButton(app, canvas)
+
+def drawSecondaryStruct(app, canvas):
+    for struct in app.structHelix:
+        startPos, endPos = struct[0], struct[1]
+        drawHelix(app, canvas, startPos, endPos)
+    for struct in app.structSheet:
+        startPos, endPos = struct[0], struct[1]
+        drawSheet(app, canvas, startPos, endPos)
+
+def drawHelix(app, canvas, startPos, endPos):
+    x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
+    y0, y1 = startPos[1] - app.height / 4, endPos[1] - app.height / 4
+    # canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
+    # The original image is 1600 pixels wide (we only care about the length)
+    dx, dy = x1 - x0, y1 - y0
+    distance = (dx ** 2 + dy ** 2) ** 0.5
+    ratio = distance / 1600
+    image = app.image_helix
+    radOfRot = math.atan(dy/dx)
+    degreeOfRot = math.degrees(radOfRot)
+    imageOfHelix = image.rotate(degreeOfRot)
+    # The ratio is further scaled since the original ratio would render 
+    # the helices too large
+    image_helix_scaled = app.scaleImage(imageOfHelix, ratio)
+    # Anchor the center of the image to the midpoint between the start 
+    # and end pos
+    center = ((x0 + x1) / 2, (y0 + y1) / 2)
+    canvas.create_image(center[0], center[1], 
+                        image=ImageTk.PhotoImage(image_helix_scaled))
+
+def drawSheet(app, canvas, startPos, endPos):
+    x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
+    y0, y1 = startPos[1] - app.height / 4, endPos[1] - app.height / 4
+    # canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
+    # The original image is 1998 pixels wide (we only care about the length)
+    dx, dy = x1 - x0, y1 - y0
+    distance = (dx ** 2 + dy ** 2) ** 0.5
+    ratio = distance / 1998
+    image = app.image_sheet
+    radOfRot = math.atan(dy/dx)
+    degreeOfRot = math.degrees(radOfRot)
+    imageOfSheet = image.rotate(degreeOfRot)
+    # The ratio is further scaled since the original ratio would render 
+    # the helices too large
+    image_sheet_scaled = app.scaleImage(imageOfSheet, ratio)
+    # Anchor the center of the image to the midpoint between the start 
+    # and end pos
+    center = ((x0 + x1) / 2, (y0 + y1) / 2)
+    canvas.create_image(center[0], center[1], 
+                        image=ImageTk.PhotoImage(image_sheet_scaled))
 
 def drawCustomSeqPage(app, canvas):
     drawReturnButton(app, canvas)
@@ -566,6 +691,11 @@ def drawBottomLeftButton(app, canvas, color):
     button = app.buttonBottomLeft
     canvas.create_rectangle(button[0], button[1], button[2], button[3],
                             fill=f"{color}")
+
+def drawSwitchButton(app, canvas):
+    button = app.buttonSwitch
+    canvas.create_rectangle(button[0], button[1], button[2], button[3],
+                            fill=f"{app.buttonSwitchColor}")
 
 def drawBottomRightButton(app, canvas, color):
     button = app.buttonBottomRight
