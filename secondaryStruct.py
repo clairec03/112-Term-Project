@@ -54,7 +54,7 @@ def appStarted(app):
             startPos = threeDToTwoD(startAAPos)
             endPos = threeDToTwoD(endAAPos)
             app.structSheet.append((startPos, endPos))
-
+    
 def redrawAll(app, canvas):  
     for struct in app.structHelix:
         startPos, endPos = struct[0], struct[1]
@@ -64,6 +64,7 @@ def redrawAll(app, canvas):
         drawSheet(app, canvas, startPos, endPos)
         
 def drawHelix(app, canvas, startPos, endPos):
+    print("printing helix")
     x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
     y0, y1 = startPos[1] - app.height / 4, endPos[1] - app.height / 4
     # canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
@@ -83,6 +84,7 @@ def drawHelix(app, canvas, startPos, endPos):
     center = ((x0 + x1) / 2, (y0 + y1) / 2)
     canvas.create_image(center[0], center[1], 
                         image=ImageTk.PhotoImage(image_helix_scaled))
+    print("helix printed!")
 
 def drawSheet(app, canvas, startPos, endPos):
     x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8

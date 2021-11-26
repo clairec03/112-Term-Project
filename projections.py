@@ -3,13 +3,6 @@ import math
 import numpy as np
 import parser
 
-# coordinates = [[0, 0, 0, 1], [0, 100, 0, 1], [0, 0, 100, 1],
-#               [100, 0, 0, 100], [100, 100, 0, 1], [100, 0, 100, 1],
-#               [0, 100, 100, 1], [100, 100, 100, 1]]
-# coordinatesInNumpy = np.array(coordinates)
-# elems = ['N', 'C', 'O', 'H', 'C', 'P', 'H', 'S']
-# elemsInNumpy = np.array(elems)
-
 coordinatesInNumpy = parser.coordinatesInNumpy
 elemsInNumpy = parser.elemsInNumpy
 
@@ -18,7 +11,6 @@ class Protein(object):
         location = [coordinate[0], coordinate[1], 
                     coordinate[2], coordinate[3]]
         self.coordinate = np.array(location)
-        self.staticCoords = np.array(location)
         self.coordinate2D = threeDToTwoD(self.coordinate)
         self.atom = atom
 
@@ -85,8 +77,6 @@ def threeDToTwoD(coordinate):
 def redrawAll(app, canvas):
     drawAxes(app, canvas)
     for atom in app.atoms:
-        # coordinate = (atom.coordinate2D[0] + app.width / 2, 
-        #               atom.coordinate2D[1] + 4 * app.height / 10)
         coordinate = (atom.coordinate2D[0] + app.width / 2, 
                       atom.coordinate2D[1])
         if atom.atom == 'C':

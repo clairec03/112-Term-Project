@@ -166,7 +166,7 @@ def resetApp(app):
     app.drawCustomSeqPage = False
     app.isVisualPage = False
   
-# Custom compare function
+# Custom comparator function
 def compare(atom1, atom2):
     return (getNorm(atom1.coordinate[0], atom1.coordinate[1], atom1.coordinate[2]) 
         - getNorm(atom2.coordinate[0], atom2.coordinate[1], atom2.coordinate[2]))
@@ -288,15 +288,12 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomRight):
             goToVisualPage(app)
     elif app.isVisualPage:
-        if app.isAtomicModel and inButton(event, app.buttonSwitch):
-            app.isAtomicModel = False
+        if inButton(event, app.buttonSwitch):
+            # app.isAtomicModel = False
             app.isSecondaryStruct = True
-        elif app.isSecondaryStruct and inButton(event, app.buttonSwitch):
-            app.isSecondaryStruct = False
-            app.isAtomicModel = True
-        if inButton(event, app.buttonTopLeft):
+        elif inButton(event, app.buttonTopLeft):
             resetApp(app)
-        if inButton(event, app.buttonX):
+        elif inButton(event, app.buttonX):
             rotateX(app)
         elif inButton(event, app.buttonY):
             rotateY(app)
@@ -385,7 +382,7 @@ def goToVisualPage(app):
     app.isIntroPage = False 
 
 def redrawAll(app, canvas):
-    drawBackground(app, canvas, "mintcream")
+    # drawBackground(app, canvas, "mintcream")
     if app.isHomepage:
         drawHomepage(app, canvas)
         drawHelpHint(app, canvas, "snow")
@@ -397,10 +394,10 @@ def redrawAll(app, canvas):
         drawHelpHint(app, canvas, "RoyalBlue4")
     elif app.isVisualPage:
         drawVisualPage(app, canvas)
-    if app.isHelpPage:
+        if app.isSecondaryStruct:
+            drawSecondaryStruct(app, canvas)
+    elif app.isHelpPage:
         drawHelpPage(app,canvas)
-    if app.isSecondaryStruct:
-        drawSecondaryStruct(app, canvas)
 
 def drawCenterButton(app, canvas):
     canvas.create_rectangle(7 * app.width / 8, 7 * app.height / 8, 
@@ -633,8 +630,8 @@ def drawSecondaryStruct(app, canvas):
 
 def drawHelix(app, canvas, startPos, endPos):
     x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
-    y0, y1 = startPos[1] - app.height / 4, endPos[1] - app.height / 4
-    # canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
+    y0, y1 = startPos[1] + app.height / 1.8, endPos[1] + app.height / 1.8
+    canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
     # The original image is 1600 pixels wide (we only care about the length)
     dx, dy = x1 - x0, y1 - y0
     distance = (dx ** 2 + dy ** 2) ** 0.5
@@ -654,8 +651,8 @@ def drawHelix(app, canvas, startPos, endPos):
 
 def drawSheet(app, canvas, startPos, endPos):
     x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
-    y0, y1 = startPos[1] - app.height / 4, endPos[1] - app.height / 4
-    # canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
+    y0, y1 = startPos[1] + app.height / 1.8, endPos[1] + app.height / 1.8
+    canvas.create_line(x0, y0, x1, y1, fill = "blue", width = 2)
     # The original image is 1998 pixels wide (we only care about the length)
     dx, dy = x1 - x0, y1 - y0
     distance = (dx ** 2 + dy ** 2) ** 0.5

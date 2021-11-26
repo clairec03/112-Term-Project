@@ -65,8 +65,8 @@ for line in pdb1s5l.split("\n"):
         #     if entry != "" and len(entry) != 1 and entry != entries[1]:
         #         pass
 
-# print(aminoAcidSeq)
-# print(helices)
+print(aminoAcidSeq)
+print(helices)
 print(sheets)
 
 testArray = np.array(coordinates)
