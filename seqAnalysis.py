@@ -25,7 +25,6 @@ for line in str(record).split('\n'):
         # Add annotation to the info dict
         molecule_type = lineOfRecord[0]
         newEntries = molecule_type.split("=")
-        print(f"new entries are {newEntries}")
         sample_dna_info[newEntries[0][1:]] = newEntries[1]
 
 # DNA Transcript 
@@ -38,3 +37,6 @@ sample_dna_info["Amino acid sequence"] = sample_protein
 print(sample_protein)
 print(sample_dna_info)
 # print(sample_protein)
+
+pdb = retrieve_pdb_file("1s5l")
+print(pdb)

@@ -68,7 +68,6 @@ def get_pip():
                 result = result[:-padding]
             return result
 
-
     def bootstrap(tmpdir=None):
         # Import pip so we can use it to install pip and maybe setuptools too
         import pip

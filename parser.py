@@ -1,11 +1,16 @@
-import parserData
+import main
 import numpy as np
 from Bio.PDB import *
+from pathlib import Path
 
-# protein = '1s5l'
-# structure = MMCIFParser().get_structure('1s5l', 's5/1s5l.cif')
-# pdb1s5l = str(structure)
-pdb1s5l = parserData.pdb1s5l
+pdbcode = app.pdb
+
+# Source: https://www.tutorialspoint.com/biopython/biopython_pdb_module.htm
+try:
+    PDBList().retrieve_pdb_file(f'{pdbcode}', file_format = 'pdb', pdir = '.',)
+    pdb = Path(f'pdb{pdbcode}.ent').read_text()
+except: 
+    pass
 
 coordinates = []
 elements = []
@@ -16,7 +21,7 @@ sheets = dict()
 aminoAcidSeq = dict()
 sheetsCounter = 0
 
-for line in pdb1s5l.split("\n"):
+for line in pdb.split("\n"):
     if line.startswith("TER"):
         break
     elif line.startswith("ATOM"):
@@ -26,14 +31,14 @@ for line in pdb1s5l.split("\n"):
             if entry != "":
                 result.append(entry)
         # Adds to dictionaries of coordinates and elements
-        [x, y, z, w] = [float(result[6]), float(result[7]), float(result[8]), 1]
+        [x, y, z, w] = [5 * float(result[6]), 5 * float(result[7]), 5 * float(result[8]), 1]
         coordinates.append([x,y,z, w])
         elements.append(result[-1])
         # Adds to indexed dictionary of amino acids for modeling secondary 
         # structures
         aaIndex = result[5]
         if aaIndex in aminoAcidSeq:
-            [x, y, z, w] = [float(result[6]), float(result[7]), float(result[8]), 1]
+            [x, y, z, w] = [5 * float(result[6]), 5 * float(result[7]), 5 * float(result[8]), 1]
             aminoAcidSeq[aaIndex].append([x, y, z, w])
         else:
             aminoAcidSeq[aaIndex] = []
@@ -65,10 +70,6 @@ for line in pdb1s5l.split("\n"):
         #     if entry != "" and len(entry) != 1 and entry != entries[1]:
         #         pass
 
-print(aminoAcidSeq)
-print(helices)
-print(sheets)
-
 testArray = np.array(coordinates)
 # Finds the z-coordinate of the lowest and highest atom
 minZ = 1000000000
@@ -86,3 +87,5 @@ for row in coordinates:
     row[0] = row[0] - middleZ
     row[1] = row[1] - middleZ
 coordinatesInNumpy, elemsInNumpy = np.array(coordinates), np.array(elements)
+app.isParsing = False
+app.finishedParsing = True
