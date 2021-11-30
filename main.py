@@ -136,6 +136,9 @@ def appStarted(app):
     app.base = None
     # Source: https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html#sidescrollerExamples
     app.scrollX = 0
+    app.isDrawingHighlighterBox = False
+    app.currIndex = 0
+    app.missense_mutation, app.nonsense_mutation, app.frameshift = False, False, False
     resetApp(app)
 
 def timerFired(app):
@@ -193,7 +196,6 @@ def resetApp(app):
     app.isHelpPage = False
     app.isIntroPage = False 
     app.drawVisualPage = False
-    app.drawCustomSeqPage = False
     app.isVisualPage = False
     app.scissors_selected = False
     app.pencil_selected = False
@@ -212,13 +214,9 @@ def keyPressed(app, event):
     elif app.isDesignPage:
         if event.key == "Left":
                 app.scrollX += 100
-                print(app.scrollX)
-                # getBlockLocations(app)
                 app.changedBlocks = True
         elif event.key == "Right":
                 app.scrollX -= 100
-                print(app.scrollX)
-                # getBlockLocations(app)
                 app.changedBlocks = True
         elif event.key == "+":
             app.blockZoomScale *= 1.1
@@ -412,6 +410,7 @@ def getUserInput(app, prompt):
     if app.pencil_selected:
         input = app.getUserInput(prompt).upper()
         userInputToDNA(app, input)
+        app.isDrawingHighlighterBox = False
 
 def mousePressed(app, event):
     if inButton(event, app.buttonTopLeft):
@@ -434,8 +433,10 @@ def mousePressed(app, event):
             app.aminoAcids = translate(app, app.rna)
             app.scissors_selected = False
         elif app.pencil_selected and event.y >= app.y0 and event.y <= app.y2:
+            print("event is at", event.x, event.y)
             index = getIndex(app, event.x)
-            print("ready to get user input")
+            app.currIndex = index
+            app.isDrawingHighlighterBox = True
             getUserInput(app, "Please enter the DNA sequence to be inserted here\nWrite a string with A's, T's, G's, and C's only")
             app.dna = app.dna[0:index] + app.input_dna + app.dna[index:-1]
             getDNAComplement(app)
@@ -546,7 +547,7 @@ def processUserInput(app):
     aminoAcidSeq = dict()
     sheetsCounter = 0
     # Getting amino acid sequence to be converted into RNA & then DNA
-    # For user to edit
+    # for user to edit
     aminoAcids = dict()
     AACounter = 1
     for line in pdb.split("\n"):
@@ -603,7 +604,6 @@ def processUserInput(app):
     app.rna = reverseTranslate(app, AACounter)
     app.dna = reverseTranscribe(app)
     getDNAComplement(app)
-    # getBlockLocations(app)
     app.aminoAcidSeq = aminoAcidSeq
     # Finds the z-coordinate of the lowest and highest atom
     minZ = 1000000000
@@ -878,7 +878,7 @@ def drawDesignPage(app, canvas):
         canvas.create_text(120, app.y2 + 80, text = "Press right arrow key to move",
                        fill = "snow", font = "Arial 15 bold")
     elif currNum > totalNum * .1 and currNum < totalNum * .9:
-        canvas.create_text(130, app.y2 + 80, text = "Press left or right arrow key to move",
+        canvas.create_text(140, app.y2 + 80, text = "Press left or right arrow key to move",
                        fill = "snow", font = "Arial 15 bold")
     else:
         canvas.create_text(120, app.y2 + 80, text = "Press left arrow key to move",
@@ -947,6 +947,13 @@ def drawDesignPage(app, canvas):
         canvas.create_rectangle(x0, y1, x1, y2, fill=f"{compColor}")
         canvas.create_text((x0+x1)/2, (y1+y2)/2, text=f"{app.DNAComplement[i]}",
                             fill=f"{textColor}")
+    # Draw highlighter box for selected nucleotide
+    if app.isDrawingHighlighterBox:
+        i = app.currIndex
+        x0 = app.scrollX + i * (scale + spacing)
+        x1 = app.scrollX + (i+1) * (scale + spacing)
+        print(x0, x1)
+        canvas.create_rectangle(x0 - 3, y0 - 3, x1 - 2, y2 + 3, outline="yellow", width = 3)
 
 def getIndex(app, x0):
     index = (x0 - app.scrollX) // (app.spacing + app.blockZoomScale)
@@ -1334,6 +1341,11 @@ def translate(app, newRNA):
             if currNucleotide in app.amino_acids[AA]:
                 newProtein[counter + 1] = AA
                 break
+        if AA == "STOP":
+            break
+    print(newProtein)
+    if len(newProtein) > nucleotideCount:
+        app.nonsense_mutation = True
     return newProtein
 
 def transcribe(DNA):
@@ -1380,15 +1392,5 @@ def getDNAComplement(app):
             complement = 'G'
         result += complement
     app.DNAComplement = result
-
-def getBlockLocations(app):
-    scale = app.blockZoomScale
-    spacing = app.spacing
-    currSpacing = 0
-    numOfBlocks = len(app.dna)
-    for i in range(numOfBlocks):
-        x0, x1 = app.scrollX + currSpacing + i * scale, app.scrollX + currSpacing + (i+1) * scale
-        currSpacing += spacing
-        app.blockLocations.append((x0, x1))
 
 runApp(width = 1000, height = 800)
