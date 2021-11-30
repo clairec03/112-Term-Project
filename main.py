@@ -1,16 +1,14 @@
 # Name: Claire Chen
 # Andrew ID: ccz
 from cmu_112_graphics import *
-from seqAnalysis import *
 import numpy as np
-from projections import *
 import math
 import numpy as np
-import parser
 from functools import cmp_to_key
 from PIL import Image
 from Bio.PDB import *
 from pathlib import Path
+import random
 
 def appStarted(app):
     app.pdb = ''
@@ -19,33 +17,60 @@ def appStarted(app):
     app.inputs = []
     app.atoms = list()
     app.level = 50
-    app.viewerCoords = (500, 500, 500)
+    app.viewerCoords = (500, 400, 500)
     app.coordinates, app.elems = [], []
     app.aminoAcidSeq, app.helices, app.sheets = [], [], []
-    url_home = 'https://mma.prnewswire.com/media/1424831/CRISPeR_Gene_Editing.jpg?w=1200'
-    app.image_home = app.loadImage(url_home)
+    app.image_home = Image.open("homepage.jpg")
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
-    url_design_scissors = "https://www.sciencenewsforstudents.org/wp-content/uploads/2019/11/080819_ti_crisprsicklecell_feat-1028x579-1028x579.jpg"
-    image_design_scissors = app.loadImage(url_design_scissors)
-    mouse = app.scaleImage(image_design_scissors, 1/3)
-    app.image_mouse = mouse.crop((200, 200, 400, 579))
+    # Source: https://www.flaticon.com/free-icon/scissors_2168806?related_id=2168905&origin=search
+    image_design_scissors = Image.open("scissors.png")
+    app.img_scissors = app.scaleImage(image_design_scissors, 1/10)
+    # Source: https://www.flaticon.com/free-icon/scissors_2168905?related_id=2168905&origin=search
+    image_scissors_on_click = Image.open("scissors_outline.png")
+    app.img_scissors_outline = app.scaleImage(image_scissors_on_click, 1/10)
+    
+    image_design_pencil = Image.open("pencil.png")
+    app.img_pencil = app.scaleImage(image_design_pencil, 1/10)
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
                          3 * app.width / 5,  4.4 * app.height / 5)
     app.buttonTopLeft = (app.width / 12, app.height / 12, 
                          app.width / 4, app.height / 8)
-    app.buttonBottomLeft= (app.width/5, 3 * app.height / 4, 2 * app.width /5, 
+    app.buttonBottomLeft = (app.width / 5, 3 * app.height / 4, 2 * app.width / 5, 
                             3.2 * app.height/4)
     app.buttonBottomRight = (3 * app.width/5, 3 * app.height / 4, 4 * app.width/5, 
                             3.2 * app.height/4)
+    # Working on this rn
+    app.buttonBottomMiddle = (app.width / 5, 3.3 * app.height / 4, 
+                              2 * app.width / 5, 3.5 * app.height / 4)
     app.buttonSettings = (app.width / 10, app.height / 8, 
                           1.1 * app.width / 10, 1.08 * app.height / 8,)
     app.buttonInput = (app.width / 6, 7 * app.height / 8,
                             1.2 * app.width / 6, 7.5 * app.height / 8)
     app.dna_bases = {"adenine", "guanine", "cytosine", "thymine"}
     app.rna_bases = {"adenine", "guanine", "cytosine", "uracil"}
-    app.amino_acids = {"ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", 
-                       "HIS", "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER",
-                       "THR", "TRP", "TYR", "VAL"}
+    app.amino_acids = {"START": {"AUG"},
+                       "ALA": {"GCU", "GCC", "GCA", "GCG"},
+                       "ARG": {"CGU", "CGC", "CGA", "CGG"},
+                       "ASN": {"AAU", "AAC"},
+                       "ASP": {"GAU", "GAC"},
+                       "CYS": {"UGU", "UGC"},
+                       "GLN": {"CAA", "CAG"},
+                       "GLU": {"GAA", "GAG"},
+                       "GLY": {"GGU", "GGC", "GGA", "GGG"},
+                       "HIS": {"CAU", "CAC"},
+                       "ILE": {"AUU", "AUC"},
+                       "LEU": {"UUA", "UUG"},
+                       "LYS": {"AAA", "AAG"},
+                       "MET": {"AUG"},
+                       "PHE": {"UUU", "UUC"},
+                       "PRO": {"CCU", "CCC", "CCA", "CCG"},
+                       "SER": {"AGU", "AGC"},
+                       "THR": {"ACU", "ACC", "ACA", "ACG"},
+                       "TRP": {"UGG"},
+                       "TYR": {"UAU", "UAC"},
+                       "VAL": {"GUU", "GUC", "GUA", "GUG"},
+                       "STOP": {"UAA", "UAG"}
+                       }
     app.width, app.height = 1000, 800
     app.wantInput = False
     app.timesteps = np.arange(0, 1000, .3)
@@ -96,6 +121,15 @@ def appStarted(app):
     app.isAtomicModel = True
     app.isSecondaryStruct = False
     app.timerDelay = 1
+    app.dna, app.rna, app.aminoAcids = '', '', ''
+    app.blockZoomScale = 20
+    app.spacing = app.blockZoomScale / 4
+    app.y0 = 3 * app.height / 5
+    app.y2 = 3 * app.height / 4
+    app.y1 = (app.y0 + app.y2) / 2
+    app.blockLocations = []
+    # Source: https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html#sidescrollerExamples
+    app.scrollX = 0
     resetApp(app)
 
 def timerFired(app):
@@ -148,7 +182,6 @@ def mouseMoved(app, event):
         app.center1ButtonColor = "RoyalBlue4"
 
 def resetApp(app):
-    # Homepage
     app.isHomepage = True
     app.isDesignPage = False
     app.isHelpPage = False
@@ -156,6 +189,7 @@ def resetApp(app):
     app.drawVisualPage = False
     app.drawCustomSeqPage = False
     app.isVisualPage = False
+    app.scissors_selected = False
 
 def keyPressed(app, event):
     if event.key == "+":
@@ -168,6 +202,21 @@ def keyPressed(app, event):
             atom.scaleDown()
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
         app.level -= 1
+    elif app.isDesignPage:
+        if event.key == "Left":
+                app.scrollX += 100
+                print(app.scrollX)
+                # getBlockLocations(app)
+                app.changedBlocks = True
+        elif event.key == "Right":
+                app.scrollX -= 100
+                print(app.scrollX)
+                # getBlockLocations(app)
+                app.changedBlocks = True
+        elif event.key == "+":
+            app.blockZoomScale *= 1.1
+        elif event.key == "-":
+            app.blockZoomScale *= 0.9
     elif app.isVisualPage:
         if event.key == "Left":
             if app.isRotatingX:
@@ -290,6 +339,8 @@ def keyPressed(app, event):
                         struct.rotateAroundZ(1)
                         struct.start2D = threeDToTwoD(struct.start)
                         struct.end2D = threeDToTwoD(struct.end)
+        elif event.key == "h":
+            app.isHelpPage = True
         elif event.key == "Up":
             if app.isAtomicModel:
                 for atom in app.atoms:
@@ -344,20 +395,19 @@ def keyPressed(app, event):
 
 def getUserInput(app, prompt):
     if app.wantInput:
-        # if app.getUserInput(prompt) != None:
         app.inputs.append(app.getUserInput(prompt).lower())
         if len(app.inputs) > 0 and len(app.inputs[-1]) and app.inputs[-1].isalnum():
-            app.pdb = app.inputs[-1]
-            processUserInput(app)
-            app.isParsing = True
-            app.wantInput = False
-        # else:
-        #     return False
-    print(app.inputs)
+            if app.isIntroPage:
+                app.pdb = app.inputs[-1]
+                processUserInput(app)
+                app.isParsing = True
+                app.wantInput = False
+            elif app.isDesignPage:
+                userInputToDNA(app)
 
 def mousePressed(app, event):
-    print(f"app.isAtomicModel is {app.isAtomicModel}")
-    print(f"app.isSecondaryStruct is {app.isSecondaryStruct}")
+    if inButton(event, app.buttonTopLeft):
+        resetApp(app)
     if app.isHomepage:
         if inButton(event, app.buttonCenter1):
             app.isHomepage = False
@@ -371,12 +421,18 @@ def mousePressed(app, event):
         elif inButton(event, app.buttonBottomLeft):
             if app.wantInput == False:
                 app.wantInput = True
-                getUserInput(app,"Please enter a valid 4-digit PDB code\ne.g. 1S5L, 2FAT, 3ICB")
+                while True:
+                    try:
+                        getUserInput(app,"Please enter a valid 4-digit PDB code\ne.g. 1S5L, 2FAT, 3ICB")
+                        break
+                    except:
+                        getUserInput(app,"Please try again. Enter a valid 4-digit PDB code\ne.g. 1S5L, 2FAT, 3ICB")
             else:
                 app.wantInput = False
-            # goToDesignPage(app)
         elif inButton(event, app.buttonBottomRight):
             goToVisualPage(app)
+        elif inButton(event, app.buttonBottomMiddle):
+            goToDesignPage(app)
     elif app.isVisualPage:
         if inButton(event, app.buttonSwitch):
             if app.isAtomicModel:
@@ -432,7 +488,6 @@ def mousePressed(app, event):
                 app.leftButtonColor = "SteelBlue1"
                 app.rightButtonColor = "SteelBlue1"
             app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
-    print(event)
 
 def displaySecondaryStruct(app):
     app.isAtomicModel = True
@@ -443,15 +498,11 @@ def mouseDragged(app, event):
 
 def processUserInput(app):
     pdbcode = app.pdb
+    # Sources for retrieving pdb file
     # Source 1: https://www.tutorialspoint.com/biopython/biopython_pdb_module.htm
     # Source 2: https://biopython.org/docs/1.75/api/Bio.PDB.PDBList.html
-    try:
-        PDBList().retrieve_pdb_file(f'{pdbcode}', file_format = 'pdb', pdir = '.',)
-        pdb = Path(f'pdb{pdbcode}.ent').read_text()
-        print("file downloaded!")
-    except: 
-        pass
-
+    PDBList().retrieve_pdb_file(f'{pdbcode}', file_format = 'pdb', pdir = '.',)
+    pdb = Path(f'pdb{pdbcode}.ent').read_text()
     coordinates = []
     elements = []
     helices = dict()
@@ -460,6 +511,10 @@ def processUserInput(app):
     sheets = dict()
     aminoAcidSeq = dict()
     sheetsCounter = 0
+    # Getting amino acid sequence to be converted into RNA & then DNA
+    # For user to edit
+    aminoAcids = dict()
+    AACounter = 1
     for line in pdb.split("\n"):
         if line.startswith("TER"):
             break
@@ -469,6 +524,13 @@ def processUserInput(app):
             for entry in entries:
                 if entry != "":
                     result.append(entry)
+            # Amino acid dictionary starts here 
+            currAA = result[3]
+            if result[1] == '1':
+                aminoAcids[AACounter] = currAA
+            elif currAA != aminoAcids[AACounter]:
+                AACounter += 1
+                aminoAcids[AACounter] = currAA
             # Adds to dictionaries of coordinates and elements
             [x, y, z, w] = [5 * float(result[6]), 5 * float(result[7]), 5 * float(result[8]), 1]
             coordinates.append([x,y,z, w])
@@ -503,7 +565,12 @@ def processUserInput(app):
             elif len(entries) > 8:
                 sheetsCounter += 1
                 sheets[str(sheetsCounter)] = [entries[3]] + entries[5:7] + [entries[8]]
-    print(aminoAcidSeq)
+    app.aminoAcids = aminoAcids
+    app.rna = reverseTranslate(app, AACounter)
+    app.dna = reverseTranscribe(app)
+    getDNAComplement(app)
+    getBlockLocations(app)
+    app.aminoAcidSeq = aminoAcidSeq
     # Finds the z-coordinate of the lowest and highest atom
     minZ = 1000000000
     maxZ = -1
@@ -521,11 +588,9 @@ def processUserInput(app):
         row[1] = row[1] - middleZ
     coordinatesInNumpy, elemsInNumpy = np.array(coordinates), np.array(elements)
     app.coordinates, app.elems = coordinatesInNumpy, elemsInNumpy
-    aminoAcidSeq = app.aminoAcidSeq
-    print("helices are", helices)
-    app.helices = helices
+    updateHelices(app, helices)
     app.sheets = sheets
-    print("sheets are ", sheets)
+    updateSheets(app, sheets)
     app.atoms = list()
     #            C, H, O, N, P, S
     elemCount = [0, 0, 0, 0, 0, 0]
@@ -551,28 +616,26 @@ def processUserInput(app):
     app.percent['Nitrogen'] = 100 * elemCount[3] / totalCount
     app.percent['Phosphorus'] = 100 * elemCount[4] / totalCount
     app.percent['Sulfur'] = 100 * elemCount[5] / totalCount
-    print("helices are", helices)
     for helix in helices:
         startHelixPos, endHelixPos = helices[helix][1], helices[helix][3]
         if startHelixPos in aminoAcidSeq and endHelixPos in aminoAcidSeq:
             startAAPos = aminoAcidSeq[startHelixPos][0]
             endAAPos = aminoAcidSeq[endHelixPos][-1]
-            # startPos = threeDToTwoD(startAAPos)
-            # endPos = threeDToTwoD(endAAPos)
-    #         app.structHelix.append((startPos, endPos))
             app.structHelix.append(Helix(startAAPos, endAAPos))
-            print("appending helix to app.structHelix...")
     for sheet in sheets:
         startSheetPos, endSheetPos = sheets[sheet][1], sheets[sheet][3]
         if startSheetPos in aminoAcidSeq and endSheetPos in aminoAcidSeq:
             startAAPos = aminoAcidSeq[startSheetPos][0]
             endAAPos = aminoAcidSeq[endSheetPos][-1]
-            # startPos = threeDToTwoD(startAAPos)
-            # endPos = threeDToTwoD(endAAPos)
-            # app.structSheet.append((startPos, endPos))
             app.structSheet.append(Sheet(startAAPos, endAAPos))
     app.isParsing = False
     app.finishedParsing = True
+
+def updateHelices(app, helices):
+    app.helices = helices
+
+def updateSheets(app, sheets):
+    app.sheets = sheets
 
 def rotateX(app):
     app.isRotatingX = True
@@ -627,8 +690,7 @@ def redrawAll(app, canvas):
     elif app.isVisualPage:
         drawVisualPage(app, canvas)
         drawAtomicModel(app, canvas)
-        if app.isSecondaryStruct:
-            drawSecondaryStruct(app, canvas)
+        drawSecondaryStruct(app, canvas)
     elif app.isHelpPage:
         drawHelpPage(app,canvas)
 
@@ -742,52 +804,91 @@ def drawIntroPage(app, canvas):
         canvas.create_text((buttonRight[0] + buttonRight[2])/2, (buttonRight[1]+
                             buttonRight[3])/2, text = "Visualize Protein", 
                             fill = "snow", font = "Arial 15 bold")
+        drawBottomMiddleButton(app, canvas, "RosyBrown3")
+        buttonMiddle = app.buttonBottomMiddle
+        canvas.create_text((buttonMiddle[0] + buttonMiddle[2])/2, (buttonMiddle[1]+
+                            buttonMiddle[3])/2, text = "Edit Protein", 
+                            fill = "grey1", font = "Arial 15 bold")
 
 def drawDesignPage(app, canvas):
     drawBackground(app, canvas, "#001a33")
     drawReturnButton(app,canvas)
-    seq = sample_dna_info['Sequence']
+    # Draw neon yellow highlight on dna double helix
+    ratio = getIndex(app, 0) / len(app.dna)
+    tPos = ratio * 1000
+    lower = 100 * np.sin(2 * np.pi * (tPos + 240) / 255) + app.height/3.5
+    upper = 100 * np.cos(2 * np.pi * (tPos + 15) / 255) + app.height/3.5
+    canvas.create_line(tPos, lower, tPos, upper, fill = "yellow", width = 10)
+    seq = app.dna
     spacing = 1000 / len(seq)
-    canvas.create_line(0, 400, 1000, 400)
+    # Draw double helix
     for i in range(len(seq)):
         t = i * spacing 
-        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
-        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height / 4
-        if x < y:
-            canvas.create_line(t, x, t, y)
-        else: 
-            canvas.create_line(t, y, t, x)
+        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/3.5
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/3.5
+        # if x < y:
+        #     canvas.create_line(t, x, t, y)
+        # else: 
+        #     canvas.create_line(t, y, t, x)
     for t in app.timesteps:
         # RGB values range from 0 to 255
         #                    dark -> light
         # Timesteps range from 0 to 1000
         r = 12
         # First strand of sugar-phosphate backbone
-        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
+        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/3.5
         canvas.create_oval(t-r, x-r, t+r, x+r, fill = f"#{toHex(toRGB(t))}",
                                 outline = f"#{toHex(toRGB(t))}")
         # Second strand of sugar-phosphate backbone
-        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
+        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/3.5
         canvas.create_oval(t-r, y-r, t+r, y+r, fill = f"#{toHex(toRGB(t))}", 
                             outline=f"#{toHex(toRGB(t))}")
-    for i in range(len(seq)):
-        t = i * spacing 
-        x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/2
-        y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/2
-        # Prints original strand
-        canvas.create_text(t, (x+400)/2, text = f"{seq[i]}", fill = "mintcream",
-                        font = "Arial 15 bold")
-        # Prints complementary strand
-        if seq[i] == 'A':
-            complement = 'T'
-        elif seq[i] == 'T':
-            complement = 'A'
-        elif seq[i] == 'G':
-            complement = 'C'
-        elif seq[i] == 'C':
-            complement = 'G'
-        canvas.create_text(t, (y+400)/2, text = f"{complement}", 
-                          fill = "mintcream", font = "Arial 15 bold")
+    numOfBlocks = len(app.dna)
+    y0, y1, y2 = app.y0, app.y1, app.y2
+    # Draw lines that show the scale
+    canvas.create_line(tPos, max(lower, upper), 0, y0, fill = "light sky blue", width = 5)
+    canvas.create_line(tPos, max(lower, upper), 1000, y0, fill = "light sky blue", width = 5)
+    scale = app.blockZoomScale
+    spacing = app.spacing
+    currSpacing = 0
+    # Draw DNA nucleotides
+    for i in range(numOfBlocks):
+        currSpacing = i * spacing
+        x0, x1 = app.scrollX + currSpacing + i * scale, app.scrollX + currSpacing + (i+1) * scale
+        if app.dna[i] == 'A':
+            blockColor = "light salmon"
+            compColor = "lemon chiffon"
+            textColor = "grey3"
+        elif app.dna[i] == 'T':
+            blockColor = "lemon chiffon"
+            compColor = "light salmon"
+            textColor = "grey3"
+        elif app.dna[i] == 'G':
+            blockColor = "LightBlue1"
+            compColor = "DarkSeaGreen1"
+            textColor = "grey3"
+        elif app.dna[i] == 'C':
+            blockColor = "DarkSeaGreen1"
+            compColor = "LightBlue1"
+            textColor = "grey3"
+        canvas.create_rectangle(x0, y0, x1, y1, fill=f"{blockColor}")
+        canvas.create_text((x0+x1)/2, (y0+y1)/2, text=f"{app.dna[i]}",
+                            fill=f"{textColor}")
+        canvas.create_rectangle(x0, y1, x1, y2, fill=f"{compColor}")
+        canvas.create_text((x0+x1)/2, (y1+y2)/2, text=f"{app.DNAComplement[i]}",
+                            fill=f"{textColor}")
+        if app.scissors_selected:
+            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_scissors_outline))
+        else:
+            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_scissors))
+        canvas.create_image(4.8 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_pencil))
+
+def getIndex(app, x0):
+    index = (x0 - app.scrollX) / (app.spacing + app.blockZoomScale)
+    return index
 
 def toRGB(t):
     r = int(abs(150 * np.sin(2 * np.pi * (t-200) / 255)))
@@ -795,6 +896,8 @@ def toRGB(t):
     b = 255
     return (r, g, b)
 
+# Source of the toHex() function:
+# https://www.codespeedy.com/convert-rgb-to-hex-color-code-in-python/
 def toHex(tuple):
     return "%02x%02x%02x" % tuple
 
@@ -862,25 +965,25 @@ def drawAtomicModel(app, canvas):
         drawSwitchButton(app, canvas)
 
 def drawSecondaryStruct(app, canvas):
-    for struct in app.structHelix:
-        startPos, endPos = struct.start, struct.end
-        print(startPos, endPos)
-        # startPos, endPos = struct[0], struct[1]
-        drawHelix(app, canvas, startPos, endPos)
-    for struct in app.structSheet:
-        startPos, endPos = struct.start, struct.end
-        # startPos, endPos = struct[0], struct[1]
-        drawSheet(app, canvas, startPos, endPos)
-    drawCenterButton(app, canvas)
-    drawLeftArrow(app, canvas)
-    drawRightArrow(app, canvas)
-    drawUpArrow(app, canvas)
-    drawDownArrow(app, canvas)
-    drawSwitchButton(app, canvas)
+    helixStructs = app.structHelix
+    sheetStructs = app.structSheet
+    if app.isSecondaryStruct:
+        for struct in helixStructs:
+            startPos, endPos = struct.start, struct.end
+            drawHelix(app, canvas, startPos, endPos)
+        for struct in sheetStructs:
+            startPos, endPos = struct.start, struct.end
+            drawSheet(app, canvas, startPos, endPos)
+        drawCenterButton(app, canvas)
+        drawLeftArrow(app, canvas)
+        drawRightArrow(app, canvas)
+        drawUpArrow(app, canvas)
+        drawDownArrow(app, canvas)
+        drawSwitchButton(app, canvas)
 
 def drawHelix(app, canvas, startPos, endPos):
-    x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
-    y0, y1 = startPos[1], endPos[1]
+    x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
+    y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
     # The original image is 1600 pixels wide (we only care about the length)
     dx, dy = x1 - x0, y1 - y0
     distance = (dx ** 2 + dy ** 2) ** 0.5
@@ -899,8 +1002,8 @@ def drawHelix(app, canvas, startPos, endPos):
                         image=ImageTk.PhotoImage(image_helix_scaled))
 
 def drawSheet(app, canvas, startPos, endPos):
-    x0, x1 = startPos[0] + app.width / 1.8, endPos[0] + app.width / 1.8
-    y0, y1 = startPos[1], endPos[1]
+    x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
+    y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
     # The original image is 1998 pixels wide (we only care about the length)
     dx, dy = x1 - x0, y1 - y0
     distance = (dx ** 2 + dy ** 2) ** 0.5
@@ -950,6 +1053,11 @@ def drawSwitchButton(app, canvas):
 
 def drawBottomRightButton(app, canvas, color):
     button = app.buttonBottomRight
+    canvas.create_rectangle(button[0], button[1], button[2], button[3],
+                            fill=f"{color}")
+
+def drawBottomMiddleButton(app, canvas, color):
+    button = app.buttonBottomMiddle
     canvas.create_rectangle(button[0], button[1], button[2], button[3],
                             fill=f"{color}")
 
@@ -1152,5 +1260,73 @@ def threeDToTwoD(coordinate):
     projectToXY = np.array(projections)
     result = np.matmul(projectToXY, product)
     return result[0:2]
+
+def translate(app, newRNA):
+    # Translate (RNA -> Protein)
+    newProtein = dict()
+    nucleotideCount = len(newRNA) // 3 + 1
+    for counter in range(nucleotideCount + 1):
+        baseStart, baseEnd = counter * 3, counter * 3 + 2
+        currNucleotide = newRNA[baseStart:baseEnd+1]
+        for AA in app.amino_acids:
+            if currNucleotide in app.amino_acids[AA]:
+                newProtein[counter + 1] = AA
+                break
+    return newProtein
+
+def transcribe(DNA):
+    # Transcribe (DNA -> RNA)
+    newRNA = ''
+    for baseIndex in range(len(DNA)):
+        if DNA[baseIndex] == "T":
+            newRNA += "U"
+        else:
+            newRNA += DNA[baseIndex]
+    return newRNA
+
+def reverseTranscribe(app):
+    RNA = app.rna
+    # RNA -> DNA
+    DNA = ''
+    for baseIndex in range(len(RNA)):
+        if RNA[baseIndex] == "U":
+            DNA += "T"
+        else:
+            DNA += RNA[baseIndex]
+    return DNA
+
+def reverseTranslate(app, AACounter):
+    # Protein -> RNA
+    RNA = ''
+    for aminoAcidIndex in range(1, AACounter + 1):
+        currAA = app.aminoAcids[aminoAcidIndex]
+        codon = random.choice(tuple(app.amino_acids[currAA]))
+        RNA += codon
+    return RNA
+
+def getDNAComplement(app):
+    seq = app.dna
+    result = ''
+    for i in range(len(seq)):
+        if seq[i] == 'A':
+            complement = 'T'
+        elif seq[i] == 'T':
+            complement = 'A'
+        elif seq[i] == 'G':
+            complement = 'C'
+        elif seq[i] == 'C':
+            complement = 'G'
+        result += complement
+    app.DNAComplement = result
+
+def getBlockLocations(app):
+    scale = app.blockZoomScale
+    spacing = app.spacing
+    currSpacing = 0
+    numOfBlocks = len(app.dna)
+    for i in range(numOfBlocks):
+        x0, x1 = app.scrollX + currSpacing + i * scale, app.scrollX + currSpacing + (i+1) * scale
+        currSpacing += spacing
+        app.blockLocations.append((x0, x1))
 
 runApp(width = 1000, height = 800)
