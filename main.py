@@ -15,11 +15,13 @@ def appStarted(app):
     app.isParsing = False
     app.finishedParsing = False
     app.inputs = []
+    app.input_dna = ''
     app.atoms = list()
     app.level = 50
     app.viewerCoords = (500, 400, 500)
     app.coordinates, app.elems = [], []
     app.aminoAcidSeq, app.helices, app.sheets = [], [], []
+    # Source: https://www.biospace.com/getasset/aa8b842c-373c-4418-a466-a203bbe456d7/
     app.image_home = Image.open("homepage.jpg")
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
     # Source: https://www.flaticon.com/free-icon/scissors_2168806?related_id=2168905&origin=search
@@ -28,7 +30,7 @@ def appStarted(app):
     # Source: https://www.flaticon.com/free-icon/scissors_2168905?related_id=2168905&origin=search
     image_scissors_on_click = Image.open("scissors_outline.png")
     app.img_scissors_outline = app.scaleImage(image_scissors_on_click, 1/10)
-    
+    # Source: http://clipart-library.com/free/pencil-clipart-transparent-background.html
     image_design_pencil = Image.open("pencil.png")
     app.img_pencil = app.scaleImage(image_design_pencil, 1/10)
     app.buttonCenter1 = (2 * app.width / 5, 4.15 * app.height / 5,
@@ -46,6 +48,10 @@ def appStarted(app):
                           1.1 * app.width / 10, 1.08 * app.height / 8,)
     app.buttonInput = (app.width / 6, 7 * app.height / 8,
                             1.2 * app.width / 6, 7.5 * app.height / 8)
+    app.buttonScissors = (5.2 * app.width / 6 - 25.6, 5.2 * app.height / 6 - 25.6, 
+                        5.2 * app.width / 6 + 25.6, 5.2 * app.height / 6 + 25.6)
+    app.buttonPencil = (4.8 * app.width / 6 - 25.6, 5.2 * app.height / 6 - 25.6, 
+                        4.8 * app.width / 6 + 25.6, 5.2 * app.height / 6 + 25.6)
     app.dna_bases = {"adenine", "guanine", "cytosine", "thymine"}
     app.rna_bases = {"adenine", "guanine", "cytosine", "uracil"}
     app.amino_acids = {"START": {"AUG"},
@@ -127,7 +133,7 @@ def appStarted(app):
     app.y0 = 3 * app.height / 5
     app.y2 = 3 * app.height / 4
     app.y1 = (app.y0 + app.y2) / 2
-    app.blockLocations = []
+    app.base = None
     # Source: https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html#sidescrollerExamples
     app.scrollX = 0
     resetApp(app)
@@ -190,6 +196,7 @@ def resetApp(app):
     app.drawCustomSeqPage = False
     app.isVisualPage = False
     app.scissors_selected = False
+    app.pencil_selected = False
 
 def keyPressed(app, event):
     if event.key == "+":
@@ -395,15 +402,16 @@ def keyPressed(app, event):
 
 def getUserInput(app, prompt):
     if app.wantInput:
-        app.inputs.append(app.getUserInput(prompt).lower())
-        if len(app.inputs) > 0 and len(app.inputs[-1]) and app.inputs[-1].isalnum():
-            if app.isIntroPage:
+        if app.isIntroPage:
+            app.inputs.append(app.getUserInput(prompt).lower())
+            if len(app.inputs) > 0 and len(app.inputs[-1]) and app.inputs[-1].isalnum():
                 app.pdb = app.inputs[-1]
                 processUserInput(app)
                 app.isParsing = True
                 app.wantInput = False
-            elif app.isDesignPage:
-                userInputToDNA(app)
+    if app.pencil_selected:
+        input = app.getUserInput(prompt).upper()
+        userInputToDNA(app, input)
 
 def mousePressed(app, event):
     if inButton(event, app.buttonTopLeft):
@@ -415,6 +423,25 @@ def mousePressed(app, event):
     elif app.isDesignPage:
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
+        elif inButton(event, app.buttonScissors):
+            app.scissors_selected = not app.scissors_selected
+        elif inButton(event, app.buttonPencil):
+            app.pencil_selected = not app.pencil_selected
+        elif app.scissors_selected and event.y >= app.y0 and event.y <= app.y2:
+            index = getIndex(app, event.x)
+            app.dna = app.dna[0:index] + app.dna[index+1:-1]
+            app.rna = transcribe(app.dna)
+            app.aminoAcids = translate(app, app.rna)
+            app.scissors_selected = False
+        elif app.pencil_selected and event.y >= app.y0 and event.y <= app.y2:
+            index = getIndex(app, event.x)
+            print("ready to get user input")
+            getUserInput(app, "Please enter the DNA sequence to be inserted here\nWrite a string with A's, T's, G's, and C's only")
+            app.dna = app.dna[0:index] + app.input_dna + app.dna[index:-1]
+            getDNAComplement(app)
+            app.rna = transcribe(app.dna)
+            app.aminoAcids = translate(app, app.rna)
+            app.pencil_selected = False
     elif app.isIntroPage:
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
@@ -496,6 +523,13 @@ def displaySecondaryStruct(app):
 def mouseDragged(app, event): 
     pass
 
+def userInputToDNA(app, input):
+    result = ''
+    for i in range(len(input)):
+        if input[i] == 'A' or input[i] == 'T' or input[i] == 'G' or input[i] == 'C':
+            result += input[i]
+    app.input_dna = result
+
 def processUserInput(app):
     pdbcode = app.pdb
     # Sources for retrieving pdb file
@@ -569,7 +603,7 @@ def processUserInput(app):
     app.rna = reverseTranslate(app, AACounter)
     app.dna = reverseTranscribe(app)
     getDNAComplement(app)
-    getBlockLocations(app)
+    # getBlockLocations(app)
     app.aminoAcidSeq = aminoAcidSeq
     # Finds the z-coordinate of the lowest and highest atom
     minZ = 1000000000
@@ -683,6 +717,26 @@ def redrawAll(app, canvas):
         drawHelpHint(app, canvas, "snow")
     elif app.isDesignPage:
         drawDesignPage(app, canvas)
+        if app.scissors_selected:
+            canvas.create_text(app.width/4, 7.5*app.height/8, 
+                        text= "Click on a nucleotide to delete DNA bases",
+                        fill = "snow", font="Arial 15 bold")
+            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_scissors_outline))
+        else:
+            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_scissors))
+        if app.pencil_selected:
+            canvas.create_text(app.width/4, 7.5*app.height/8, 
+                        text= "Click on a nucleotide to insert DNA",
+                        fill = "snow", font="Arial 15 bold")
+        else: 
+            canvas.create_image(4.8 * app.width / 6, 5.2 * app.height / 6, 
+                        image=ImageTk.PhotoImage(app.img_pencil))
+        if not app.scissors_selected and not app.pencil_selected:
+            canvas.create_text(app.width/4, 7.5*app.height/8, 
+                        text= "Select scissors or pencil to edit the DNA sequence",
+                        fill = "snow", font="Arial 15 bold")
         drawHelpHint(app, canvas, "RoyalBlue4")
     elif app.isIntroPage:
         drawIntroPage(app, canvas)
@@ -813,6 +867,22 @@ def drawIntroPage(app, canvas):
 def drawDesignPage(app, canvas):
     drawBackground(app, canvas, "#001a33")
     drawReturnButton(app,canvas)
+    # Draw a triangle indicating the current base
+    canvas.create_polygon(85, app.y2 + 30, 75, app.y2 + 50, 95, app.y2 + 50,
+                          fill="yellow")
+    currNum = getIndex(app, 85)
+    totalNum = len(app.dna)
+    canvas.create_text(85, app.y2 + 60, text = f"Current Base: {currNum}/{totalNum}",
+                       fill = "snow", font = "Arial 15 bold")
+    if currNum < totalNum * .1:
+        canvas.create_text(120, app.y2 + 80, text = "Press right arrow key to move",
+                       fill = "snow", font = "Arial 15 bold")
+    elif currNum > totalNum * .1 and currNum < totalNum * .9:
+        canvas.create_text(130, app.y2 + 80, text = "Press left or right arrow key to move",
+                       fill = "snow", font = "Arial 15 bold")
+    else:
+        canvas.create_text(120, app.y2 + 80, text = "Press left arrow key to move",
+                       fill = "snow", font = "Arial 15 bold")
     # Draw neon yellow highlight on dna double helix
     ratio = getIndex(app, 0) / len(app.dna)
     tPos = ratio * 1000
@@ -877,18 +947,10 @@ def drawDesignPage(app, canvas):
         canvas.create_rectangle(x0, y1, x1, y2, fill=f"{compColor}")
         canvas.create_text((x0+x1)/2, (y1+y2)/2, text=f"{app.DNAComplement[i]}",
                             fill=f"{textColor}")
-        if app.scissors_selected:
-            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
-                        image=ImageTk.PhotoImage(app.img_scissors_outline))
-        else:
-            canvas.create_image(5.2 * app.width / 6, 5.2 * app.height / 6, 
-                        image=ImageTk.PhotoImage(app.img_scissors))
-        canvas.create_image(4.8 * app.width / 6, 5.2 * app.height / 6, 
-                        image=ImageTk.PhotoImage(app.img_pencil))
 
 def getIndex(app, x0):
-    index = (x0 - app.scrollX) / (app.spacing + app.blockZoomScale)
-    return index
+    index = (x0 - app.scrollX) // (app.spacing + app.blockZoomScale)
+    return int(index)
 
 def toRGB(t):
     r = int(abs(150 * np.sin(2 * np.pi * (t-200) / 255)))
