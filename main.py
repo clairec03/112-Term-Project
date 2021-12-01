@@ -15,11 +15,8 @@ def appStarted(app):
     app.finishedParsing = False
     app.inputs = []
     app.input_dna = ''
-    app.atoms = list()
     app.level = 50
     app.viewerCoords = (500, 400, 500)
-    app.coordinates, app.elems = [], []
-    app.aminoAcidSeq, app.helices, app.sheets = [], [], []
     # Source: https://www.biospace.com/getasset/aa8b842c-373c-4418-a466-a203bbe456d7/
     app.image_home = Image.open("homepage.jpg")
     app.image_home_scaled = app.scaleImage(app.image_home, 2/3)
@@ -51,8 +48,6 @@ def appStarted(app):
                         5.2 * app.width / 6 + 25.6, 5.2 * app.height / 6 + 25.6)
     app.buttonPencil = (4.8 * app.width / 6 - 25.6, 5.2 * app.height / 6 - 25.6, 
                         4.8 * app.width / 6 + 25.6, 5.2 * app.height / 6 + 25.6)
-    app.dna_bases = {"adenine", "guanine", "cytosine", "thymine"}
-    app.rna_bases = {"adenine", "guanine", "cytosine", "uracil"}
     app.amino_acids = {"START": {"AUG"},
                        "ALA": {"GCU", "GCC", "GCA", "GCG"},
                        "ARG": {"CGU", "CGC", "CGA", "CGG"},
@@ -121,10 +116,6 @@ def appStarted(app):
     app.protein_model = app.scaleImage(app.protein, 1/5)
     # Source of image: https://i.stack.imgur.com/T57R5.png (rescaled)
     app.image_helix = Image.open("helix.png")
-    app.structHelix = []
-    # Source of image: myself (using Adobe Sketch)
-    app.image_sheet = Image.open("sheet.png")
-    app.structSheet = []
     app.isAtomicModel = True
     app.isSecondaryStruct = False
     app.timerDelay = 1
@@ -135,13 +126,6 @@ def appStarted(app):
     app.y2 = 3 * app.height / 4
     app.y1 = (app.y0 + app.y2) / 2
     app.base = None
-    # Source: https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html#sidescrollerExamples
-    app.scrollX = 0
-    app.isDrawingHighlighterBox = False
-    app.currIndex = 0
-    app.missense_mutation, app.nonsense_mutation, app.frameshift = False, False, False
-    app.mutation = ''
-    app.proteinTitle, app.info = '', []
     resetApp(app)
 
 def timerFired(app):
@@ -173,6 +157,17 @@ def resetApp(app):
     app.isVisualPage = False
     app.scissors_selected = False
     app.pencil_selected = False
+    # Source: https://www.cs.cmu.edu/~112/notes/notes-animations-part4.html#sidescrollerExamples
+    app.scrollX = 0
+    app.isDrawingHighlighterBox = False
+    app.currIndex = 0
+    app.missense_mutation, app.nonsense_mutation, app.frameshift = False, False, False
+    app.mutation = ''
+    app.proteinTitle, app.info = '', []
+    app.coordinates, app.elems = [], []
+    app.aminoAcidSeq, app.helices, app.sheets = [], [], []
+    app.structHelix, app.structSheet = [], []
+    app.atoms = list()
 
 def keyPressed(app, event):
     if event.key == "+":
@@ -352,20 +347,28 @@ def keyPressed(app, event):
     elif app.isHomepage:
         app.isHomepage = False
         app.isIntroPage = True
+    app.aminoAcidSeq = app.aminoAcids
 
 def getUserInput(app, prompt):
     if app.wantInput:
         if app.isIntroPage:
-            app.inputs.append(app.getUserInput(prompt).lower())
-            if len(app.inputs) > 0 and len(app.inputs[-1]) and app.inputs[-1].isalnum():
-                app.pdb = app.inputs[-1]
-                processUserInput(app)
-                app.isParsing = True
-                app.wantInput = False
+            try:
+                app.inputs.append(app.getUserInput(prompt).lower())
+                if len(app.inputs) > 0 and len(app.inputs[-1]) and app.inputs[-1].isalnum():
+                    app.pdb = app.inputs[-1]
+                    processUserInput(app)
+                    app.isParsing = True
+                    app.wantInput = False
+            except:
+                pass
     if app.pencil_selected:
-        input = app.getUserInput(prompt).upper()
-        userInputToDNA(app, input)
-        app.isDrawingHighlighterBox = False
+        try:
+            input = app.getUserInput(prompt).upper()
+            userInputToDNA(app, input)
+            app.isDrawingHighlighterBox = False
+        except:
+            app.pencil_selected = False
+        reProcessUserInput(app)
 
 def mousePressed(app, event):
     if inButton(event, app.buttonTopLeft):
@@ -617,7 +620,6 @@ def processUserInput(app):
                         result = "Optimal PH: " + entry
                         app.info.append(result)
                         break
-
     app.aminoAcids = aminoAcids
     app.rna = reverseTranslate(app, AACounter)
     app.dna = reverseTranscribe(app)
@@ -687,6 +689,9 @@ def processUserInput(app):
     app.isParsing = False
     app.finishedParsing = True
 
+def reProcessUserInput(app):
+    app.aminoAcidSeq = app.aminoAcids
+
 def updateHelices(app, helices):
     app.helices = helices
 
@@ -734,7 +739,9 @@ def goToVisualPage(app):
 
 def redrawAll(app, canvas):
     drawBackground(app, canvas, "mintcream")
-    if app.isHomepage:
+    if app.isHelpPage:
+        drawHelpPage(app,canvas)
+    elif app.isHomepage:
         drawHomepage(app, canvas)
         drawHelpHint(app, canvas, "snow")
     elif app.isDesignPage:
@@ -786,8 +793,6 @@ def redrawAll(app, canvas):
         canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
                         text = "Select axis of rotation", fill = "snow",
                         font = "Arial 15", anchor = "w")
-    elif app.isHelpPage:
-        drawHelpPage(app,canvas)
     
 def temp(app):
     dna = app.dna
@@ -868,10 +873,27 @@ def inButton(event, button):
 
 def drawHelpPage(app, canvas):
     canvas.create_rectangle(0, 0, app.width, app.height, fill='DarkSeaGreen1')
-    canvas.create_text(app.width/2, app.height/2, 
-                        text = "press X to return", font = "Arial 20")
-    canvas.create_text(app.width / 3, app.height / 5,
-                       text="Provide instructions for user here", 
+    text = '''
+    Shortcuts & Commands:
+        - Homepage: press any key to begin
+        - Protein selection: use the mouse to click on the button "Choose your protein"
+                             and enter a 4-digit PDB protein code when prompted.
+        - Protein visualization page: use the mouse to click on the button "Visualize protein."
+                                      Then, either press arrow keys or click on the arrow-shaped
+                                      buttons to rotate the protein 3-dimensionally. Press the "+"
+                                      or "-" keys to zoom in or zoom out.
+        - DNA editing page: after the page loads (after clicking the button "Edit protein"), 
+                            press the left or right keys to view other parts of the sequence
+                            not shown on the screen. 
+        - Help page: at all times, press the "h" key to see more directions on use of the app
+'''
+    counter = 0
+    for line in text.splitlines():
+        canvas.create_text(app.width/8, app.height/4 + counter * 30, 
+                        text = f"{line}", font = "Arial 20", anchor = "w")
+        counter += 1
+    canvas.create_text(app.width / 8, app.height / 5,
+                       text="Press X to return", 
                        font = "Arial 20")
 
 def drawHomepage(app, canvas):
@@ -965,10 +987,6 @@ def drawDesignPage(app, canvas):
         t = i * spacing 
         x = 100 * np.sin(2 * np.pi * (t + 240) / 255) + app.height/3.5
         y = 100 * np.cos(2 * np.pi * (t + 15) / 255) + app.height/3.5
-        # if x < y:
-        #     canvas.create_line(t, x, t, y)
-        # else: 
-        #     canvas.create_line(t, y, t, x)
     for t in app.timesteps:
         # RGB values range from 0 to 255
         #                    dark -> light
@@ -1150,30 +1168,8 @@ def drawHelix(app, canvas, start, end):
                         image=ImageTk.PhotoImage(image_helix_scaled))
 
 def drawSheet(app, canvas, posTuple, color):
-    # startPos, endPos = threeDToTwoD(start), threeDToTwoD(end)
-    # x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
-    # y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
-    # # The original image is 1998 pixels wide (we only care about the length)
-    # dx, dy = x1 - x0, y1 - y0
     if len(posTuple) >= 2:
         canvas.create_line(posTuple, width = 10, fill=f"{color}")
-        # canvas.create_line(posTuple[0][0], posTuple[-1][0],
-        #                    posTuple[0][1], posTuple[-1][1], 
-        #                    width = 10, fill = "yellow")
-    # distance = (dx ** 2 + dy ** 2) ** 0.5
-    # ratio = distance / 1998
-    # image = app.image_sheet
-    # radOfRot = math.atan(dy/dx)
-    # degreeOfRot = math.degrees(radOfRot)
-    # imageOfSheet = image.rotate(degreeOfRot)
-    # # The ratio is further scaled since the original ratio would render 
-    # # the helices too large
-    # image_sheet_scaled = app.scaleImage(imageOfSheet, ratio)
-    # # Anchor the center of the image to the midpoint between the start 
-    # # and end pos
-    # center = ((x0 + x1) / 2, (y0 + y1) / 2)
-    # canvas.create_image(center[0], center[1], 
-    #                     image=ImageTk.PhotoImage(image_sheet_scaled))
 
 def drawBottomLeftButton(app, canvas, color):
     button = app.buttonBottomLeft
@@ -1495,7 +1491,6 @@ def translate(app, newRNA):
                 break
         if AA == "STOP":
             break
-    print(newProtein)
     if len(newProtein) > nucleotideCount:
         app.nonsense_mutation = True
     return newProtein

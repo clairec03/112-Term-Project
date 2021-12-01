@@ -1,13 +1,8 @@
 15-112 Term Project
 Claire Chen
-Andrew ID: ccz
 
 Project description:
-MyCrispr is an app that generates structures of CRISPR cas-9 enzymes that can specifically 
-target the user-generated DNA sequence and edit the sequence. With this app, users can select 
-a protein by providing its PDB code, edit the protein's DNA sequence of interest, visualize 
-the structure of the program-generated CRISPR cas-9 enzyme capable of editing the protein-encoding 
-gene, and compare the structure of proteins translated from the sequence before and after the edit. 
+MyCrispr is an app that generates a DNA sequence based on the protein PDB files. With this app, users can select a protein by providing its PDB code, edit the protein's DNA sequence of interest, visualize the editing of the protein-encoding gene, and compare the structure of proteins translated from the sequence before and after the edit. 
 
 Project logistics:
 The user should run the file main.py and install the following modules:
