@@ -140,6 +140,8 @@ def appStarted(app):
     app.isDrawingHighlighterBox = False
     app.currIndex = 0
     app.missense_mutation, app.nonsense_mutation, app.frameshift = False, False, False
+    app.mutation = ''
+    app.proteinTitle, app.info = '', []
     resetApp(app)
 
 def timerFired(app):
@@ -148,7 +150,7 @@ def timerFired(app):
         for atom in app.atoms:
             atom.rotateAroundZ(-.3)
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
-        # Source: https://stackoverflow.com/questions/5213033/sort-a-list-of-lists-with-a-custom-compare-function
+        # Source of custom compare function: https://stackoverflow.com/questions/5213033/sort-a-list-of-lists-with-a-custom-compare-function
         app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
     elif (app.isVisualPage and app.isSecondaryStruct and not app.isRotatingX and 
         not app.isRotatingY and not app.isRotatingZ):
@@ -162,41 +164,6 @@ def compare(atom1, atom2):
     return (getNorm(atom1.coordinate[0], atom1.coordinate[1], atom1.coordinate[2]) 
         - getNorm(atom2.coordinate[0], atom2.coordinate[1], atom2.coordinate[2]))
 
-def mouseMoved(app, event):
-    if app.buttonCenter1[0] <= event.x <= app.buttonCenter1[2]:
-        app.center1ButtonColor = "midnight blue"
-        app.center1ButtonMoved = True
-    if inButton(event, app.buttonCenter1):
-        app.center1ButtonColor = "midnight blue"
-    if inButton(event, app.buttonTopLeft):
-        pass
-    if inButton(event, app.buttonTopLeft):
-        pass
-    if inButton(event, app.buttonBottomLeft):
-        app.bottomLeftButtonColor = "midnight blue"
-    if inButton(event, app.buttonBottomRight):
-        app.bottomRightButtonColor = "IndianRed4"
-    if inButton(event, app.buttonTopLeft):
-        pass
-    if inButton(event, app.buttonX):
-        pass
-    if inButton(event, app.buttonY):
-        pass
-    if inButton(event, app.buttonZ):
-        pass
-    if inButton(event, app.leftArrowCoords):
-        pass
-    if inButton(event, app.rightArrowCoords):
-        pass
-    if inButton(event, app.upArrowCoords):
-        pass
-    if inButton(event, app.downArrowCoords):
-        pass
-    else:
-        app.bottomLeftButtonColor = "steel blue"
-        app.bottomRightButtonColor = "pale violet red"
-        app.center1ButtonColor = "RoyalBlue4"
-
 def resetApp(app):
     app.isHomepage = True
     app.isDesignPage = False
@@ -208,7 +175,6 @@ def resetApp(app):
     app.pencil_selected = False
 
 def keyPressed(app, event):
-    print("key pressed!")
     if event.key == "+":
         for atom in app.atoms:
             atom.scaleUp()
@@ -431,6 +397,26 @@ def mousePressed(app, event):
             app.rna = transcribe(app.dna)
             app.aminoAcids = translate(app, app.rna)
             app.pencil_selected = False
+        # Update app status of user generated gene edits on the design page
+        if len(app.dna) % 3 != 0:
+            app.mutation = "Frameshift"
+            app.frameshift = True
+            app.missense_mutation = False
+        elif len(app.dna) / 3 == len(app.aminoAcids):
+            app.mutation = 'None'
+        elif len(app.dna) % 3 == 0:
+            app.mutation = "Missense"
+            app.missense_mutation = True
+            app.frameshift = False
+        elif app.nonsense_mutation == True:
+            app.frameshift = False
+            app.missense_mutation = False
+            for index in app.aminoAcids:
+                if app.aminoAcids[index] == "STOP":
+                    stopNum = int(index)
+                    break
+            totalNum = len(app.dna)
+            app.mutation = f"Nonsense (protein translation stops prematurely at base {stopNum}/{totalNum})"
     elif app.isIntroPage:
         if inButton(event, app.buttonTopLeft):
             resetApp(app)
@@ -592,6 +578,46 @@ def processUserInput(app):
             elif len(entries) > 8:
                 sheetsCounter += 1
                 sheets[str(sheetsCounter)] = [entries[3]] + entries[5:7] + [entries[8]]
+        elif line.startswith("SOURCE"):
+            entries = []
+            for entry in line.split(" "):
+                if entry != "" and entry != "REMARK" and not (entry.isdigit() and len(entry) == 1):
+                    entries.append(entry)
+            if "ORGANISM_SCIENTIFIC:" in entries:
+                genus = entries[2]
+                result = "Organism: " + str(genus[0]) + str(genus[1:-1]).lower() + ' ' + str(entries[3]).lower()
+                app.info.append(result)
+        elif line.startswith("HEADER"):
+            entries = []
+            for entry in line.split(" "):
+                if entry != "" and entry != "TITLE" and not entry.isdigit():
+                    entries.append(entry)
+            app.proteinTitle = entries[1]
+        elif line.startswith("REMARK"):
+            entries = []
+            for entry in line.split(" "):
+                if entry != "" and entry != "REMARK" and not (entry.isdigit() and len(entry) == 1):
+                    entries.append(entry)
+            entries = entries[1:]
+            if "TEMPERATURE" in entries:
+                for entry in entries:
+                    if entry.isdigit():
+                        result = "Optimal Temperature: " + entry + " Kelvin"
+                        app.info.append(result)
+                        break
+            elif "IONIC STRENGTH" in entries:
+                for entry in entries:
+                    if entry.isdigit():
+                        result = "Ionic Strength: " + entry
+                        app.info.append(result)
+                        break
+            elif "PH" in entries:
+                for entry in entries:
+                    if entry.isdigit() and int(entry) <= 14 and int(entry) >= 0:
+                        result = "Optimal PH: " + entry
+                        app.info.append(result)
+                        break
+
     app.aminoAcids = aminoAcids
     app.rna = reverseTranslate(app, AACounter)
     app.dna = reverseTranscribe(app)
@@ -733,6 +759,21 @@ def redrawAll(app, canvas):
             canvas.create_text(app.width/4, 7.5*app.height/8, 
                         text= "Select scissors or pencil to edit the DNA sequence",
                         fill = "snow", font="Arial 15 bold")
+        # Displays nucleic acid information and 
+        # how the users' edits impact protein translation
+        meltingTemp = temp(app)
+        canvas.create_text(app.width/2, app.y2 + 30, 
+                        text= "Melting temperature of current DNA strand:",
+                        fill = "snow", font="Arial 15")
+        canvas.create_text(app.width/2, app.y2 + 50, 
+                        text= f"{meltingTemp}°C",
+                        fill = "snow", font="Arial 15 bold")
+        canvas.create_text(app.width/2, app.y2 + 70, 
+                        text= f"Your edits:",
+                        fill = "snow", font="Arial 15")
+        canvas.create_text(app.width/2, app.y2 + 90, 
+                        text= f"{app.mutation}",
+                        fill = "snow", font="Arial 15 bold")
         drawHelpHint(app, canvas, "RoyalBlue4")
     elif app.isIntroPage:
         drawIntroPage(app, canvas)
@@ -747,6 +788,34 @@ def redrawAll(app, canvas):
                         font = "Arial 15", anchor = "w")
     elif app.isHelpPage:
         drawHelpPage(app,canvas)
+    
+def temp(app):
+    dna = app.dna
+    res = dict()
+    for i in range(len(dna)):
+        if dna[i] == 'A':
+            if 'A' not in res:
+                res['A'] = 1
+            else:
+                res['A'] += 1
+        elif dna[i] == 'T':
+            if 'T' not in res:
+                res['T'] = 1
+            else:
+                res['T'] += 1
+        elif dna[i] == 'G':
+            if 'G' not in res:
+                res['G'] = 1
+            else:
+                res['G'] += 1
+        elif dna[i] == 'C':
+            if 'C' not in res:
+                res['C'] = 1
+            else:
+                res['C'] += 1
+    # Source of formula: http://insilico.ehu.es/tm.php?formula=basic
+    temp = 64.9 + 41*(res['G'] + res['C'] -16.4)/(res['A'] + res['T'] + res['G'] + res['C'])
+    return temp
 
 def drawCenterButton(app, canvas):
     canvas.create_rectangle(7 * app.width / 8, 7 * app.height / 8, 
@@ -1018,8 +1087,18 @@ def drawAtomicModel(app, canvas):
         # Displays chemical composition
         counter = 0
         for element in app.percent:
-            canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 10, 
+            canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 12, 
                         text = f"{element}: {app.percent[element]}%", anchor = "w", 
+                        fill = "mint cream", font = "Arial 15 bold")
+            counter += 1
+        counter += 1
+        canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 12, 
+                        text = f"Protein: {app.proteinTitle}", anchor = "w", 
+                        fill = "mint cream", font = "Arial 15 bold")
+        counter += 1
+        for fact in app.info:
+            canvas.create_text(3.5 * app.width / 5, (1 + 0.3 * counter) * app.height / 12, 
+                        text = f"{fact}", anchor = "w", 
                         fill = "mint cream", font = "Arial 15 bold")
             counter += 1
         # Draw arrows for the user to rotate the protein
