@@ -1,5 +1,5 @@
 # 15-112 Fundamentals of Programming and Computer Science Term Project
-Claire Chen
+By Claire Chen
 
 Video Demo:
 https://youtu.be/CYP1r7d8ziw
