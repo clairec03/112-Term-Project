@@ -1,5 +1,8 @@
-15-112 Term Project
+# 15-112 Fundamentals of Programming and Computer Science Term Project
 Claire Chen
+
+Video Demo:
+https://youtu.be/CYP1r7d8ziw
 
 Project description:
 MyCrispr is an app that generates a DNA sequence based on the protein PDB files. With this app, users can select a protein by providing its PDB code, edit the protein's DNA sequence of interest, visualize the editing of the protein-encoding gene, and compare the structure of proteins translated from the sequence before and after the edit. 
