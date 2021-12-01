@@ -3,7 +3,6 @@
 from cmu_112_graphics import *
 import numpy as np
 import math
-import numpy as np
 from functools import cmp_to_key
 from PIL import Image
 from Bio.PDB import *
@@ -96,6 +95,8 @@ def appStarted(app):
     app.leftButtonColor = "SteelBlue1"
     app.rightButtonColor = "SteelBlue1"
     app.buttonSwitchColor = "RosyBrown2"
+    app.sheetColors = ("indian red", "pink", "navajo white", "cornflower blue",
+                       "LightBlue1", "bisque", "PaleGreen1", "light slate blue", "thistle")
     app.leftArrowCoords = (6.9 * app.width / 8 - 30, 7 * app.height / 8 - 10,
                            6.9 * app.width / 8, 7 * app.height / 8 + 30)
     app.rightArrowCoords = (7.1 * app.width / 8 + 20, 7 * app.height / 8 - 10,
@@ -149,7 +150,13 @@ def timerFired(app):
             atom.coordinate2D = threeDToTwoD(atom.coordinate)
         # Source: https://stackoverflow.com/questions/5213033/sort-a-list-of-lists-with-a-custom-compare-function
         app.atoms = sorted(app.atoms, key=cmp_to_key(compare))
-
+    elif (app.isVisualPage and app.isSecondaryStruct and not app.isRotatingX and 
+        not app.isRotatingY and not app.isRotatingZ):
+        for helix in app.structHelix:
+            helix.rotateAroundZ(-1)
+        for struct in app.structSheet:
+            struct.rotateAroundZ(-1)
+            
 # Custom comparator function
 def compare(atom1, atom2):
     return (getNorm(atom1.coordinate[0], atom1.coordinate[1], atom1.coordinate[2]) 
@@ -201,6 +208,7 @@ def resetApp(app):
     app.pencil_selected = False
 
 def keyPressed(app, event):
+    print("key pressed!")
     if event.key == "+":
         for atom in app.atoms:
             atom.scaleUp()
@@ -237,8 +245,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundX(-1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             elif app.isRotatingY:
                 if app.isAtomicModel:
                     for atom in app.atoms:
@@ -252,8 +258,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundY(-1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             elif app.isRotatingZ:
                 if app.isAtomicModel:
                     for atom in app.atoms:
@@ -267,8 +271,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundZ(-1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             else:
                 # Need to add the secondary structure rotations here
                 for atom in app.atoms:
@@ -293,8 +295,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundX(1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             elif app.isRotatingY:
                 if app.isAtomicModel:
                     for atom in app.atoms:
@@ -308,8 +308,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundY(1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             elif app.isRotatingZ:
                 if app.isAtomicModel:
                     for atom in app.atoms:
@@ -323,8 +321,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundZ(1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
             else:
                 if app.isAtomicModel:
                     for atom in app.atoms:
@@ -342,8 +338,6 @@ def keyPressed(app, event):
                         struct.end2D = threeDToTwoD(struct.end)
                     for struct in app.structSheet:
                         struct.rotateAroundZ(1)
-                        struct.start2D = threeDToTwoD(struct.start)
-                        struct.end2D = threeDToTwoD(struct.end)
         elif event.key == "h":
             app.isHelpPage = True
         elif event.key == "Up":
@@ -366,8 +360,6 @@ def keyPressed(app, event):
                 for struct in app.structSheet:
                     struct.rotateAroundX(-1)
                     struct.rotateAroundY(-1)
-                    struct.start2D = threeDToTwoD(struct.start)
-                    struct.end2D = threeDToTwoD(struct.end)
         elif event.key == "Down":
             if app.isAtomicModel:
                 for atom in app.atoms:
@@ -387,9 +379,6 @@ def keyPressed(app, event):
                     struct.end2D = threeDToTwoD(struct.end)
                 for struct in app.structSheet:
                     struct.rotateAroundX(1)
-                    struct.rotateAroundY(1)
-                    struct.start2D = threeDToTwoD(struct.start)
-                    struct.end2D = threeDToTwoD(struct.end)
     elif event.key == "h":
         app.isHelpPage = True
     elif app.isHelpPage and event.key == "x":
@@ -433,7 +422,6 @@ def mousePressed(app, event):
             app.aminoAcids = translate(app, app.rna)
             app.scissors_selected = False
         elif app.pencil_selected and event.y >= app.y0 and event.y <= app.y2:
-            print("event is at", event.x, event.y)
             index = getIndex(app, event.x)
             app.currIndex = index
             app.isDrawingHighlighterBox = True
@@ -450,11 +438,13 @@ def mousePressed(app, event):
             if app.wantInput == False:
                 app.wantInput = True
                 while True:
+                    if app.pdb != '':
+                        break
                     try:
-                        getUserInput(app,"Please enter a valid 4-digit PDB code\ne.g. 1S5L, 2FAT, 3ICB")
+                        getUserInput(app,"Please enter a valid 4-digit PDB code\ne.g. 2JXP, 7R6Z, 2FAT, 2P2D, 1SPF\n(Find more on rcsb.org)")
                         break
                     except:
-                        getUserInput(app,"Please try again. Enter a valid 4-digit PDB code\ne.g. 1S5L, 2FAT, 3ICB")
+                        pass
             else:
                 app.wantInput = False
         elif inButton(event, app.buttonBottomRight):
@@ -466,6 +456,8 @@ def mousePressed(app, event):
             if app.isAtomicModel:
                 app.isAtomicModel = False
                 app.isSecondaryStruct = True
+                app.isRotatingAroundX, app.isRotatingAroundY = False, False
+                app.isRotatingAroundZ = True
             else:
                 app.isAtomicModel = True
                 app.isSecondaryStruct = False
@@ -659,9 +651,13 @@ def processUserInput(app):
     for sheet in sheets:
         startSheetPos, endSheetPos = sheets[sheet][1], sheets[sheet][3]
         if startSheetPos in aminoAcidSeq and endSheetPos in aminoAcidSeq:
-            startAAPos = aminoAcidSeq[startSheetPos][0]
-            endAAPos = aminoAcidSeq[endSheetPos][-1]
-            app.structSheet.append(Sheet(startAAPos, endAAPos))
+            pos = []
+            for i in range(int(startSheetPos), int(endSheetPos) + 1):
+                if str(i) in aminoAcidSeq:
+                    pos.append(aminoAcidSeq[str(i)][0])
+            posInTuple = tuple(pos)
+            if len(posInTuple) > 0:
+                app.structSheet.append(Sheet(posInTuple))
     app.isParsing = False
     app.finishedParsing = True
 
@@ -745,6 +741,10 @@ def redrawAll(app, canvas):
         drawVisualPage(app, canvas)
         drawAtomicModel(app, canvas)
         drawSecondaryStruct(app, canvas)
+        # Tiny note for buttons
+        canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
+                        text = "Select axis of rotation", fill = "snow",
+                        font = "Arial 15", anchor = "w")
     elif app.isHelpPage:
         drawHelpPage(app,canvas)
 
@@ -952,7 +952,6 @@ def drawDesignPage(app, canvas):
         i = app.currIndex
         x0 = app.scrollX + i * (scale + spacing)
         x1 = app.scrollX + (i+1) * (scale + spacing)
-        print(x0, x1)
         canvas.create_rectangle(x0 - 3, y0 - 3, x1 - 2, y2 + 3, outline="yellow", width = 3)
 
 def getIndex(app, x0):
@@ -974,6 +973,30 @@ def drawVisualPage(app, canvas):
     drawBackground(app, canvas, "grey8")
     drawReturnButton(app, canvas)
     drawAxes(app, canvas)
+    drawButtons(app, canvas)
+
+def drawButtons(app, canvas):
+    # Button X
+    canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
+                            app.buttonX[3],
+                            fill = f"{app.buttonXColor}")
+    canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
+                        (app.buttonX[1] + app.buttonX[3])/2,
+                        text = "X", font = "Arial 15 bold", fill = "snow")
+    # Button Y
+    canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
+                            app.buttonY[3],
+                            fill = f"{app.buttonYColor}")
+    canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
+                        (app.buttonY[1] + app.buttonY[3])/2,
+                        text = "Y", font = "Arial 15 bold", fill = "snow")
+    # Button Z
+    canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
+                            app.buttonZ[3],
+                            fill = f"{app.buttonZColor}")
+    canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
+                        (app.buttonZ[1] + app.buttonZ[3])/2,
+                        text = "Z", font = "Arial 15 bold", fill = "snow")
 
 def drawAtomicModel(app, canvas):
     if app.isAtomicModel:
@@ -992,7 +1015,6 @@ def drawAtomicModel(app, canvas):
                 drawPhosphorus(app, canvas, coordinate, atom)
             elif atom.atom == 'S':
                 drawSulfur(app, canvas, coordinate, atom)
-        canvas.create_text(app.width / 6, 5 * app.height / 6, text = f"app level = {app.level}")
         # Displays chemical composition
         counter = 0
         for element in app.percent:
@@ -1000,31 +1022,6 @@ def drawAtomicModel(app, canvas):
                         text = f"{element}: {app.percent[element]}%", anchor = "w", 
                         fill = "mint cream", font = "Arial 15 bold")
             counter += 1
-        # Tiny note for buttons
-        canvas.create_text(app.buttonX[0] - 10, app.buttonX[1] - 30, 
-                        text = "Select axis of rotation", fill = "snow",
-                        font = "Arial 15", anchor = "w")
-        # Button X
-        canvas.create_rectangle(app.buttonX[0], app.buttonX[1], app.buttonX[2],
-                                app.buttonX[3],
-                                fill = f"{app.buttonXColor}")
-        canvas.create_text((app.buttonX[0] + app.buttonX[2])/2,
-                            (app.buttonX[1] + app.buttonX[3])/2,
-                            text = "X", font = "Arial 15 bold", fill = "snow")
-        # Button Y
-        canvas.create_rectangle(app.buttonY[0], app.buttonY[1], app.buttonY[2],
-                                app.buttonY[3],
-                                fill = f"{app.buttonYColor}")
-        canvas.create_text((app.buttonY[0] + app.buttonY[2])/2,
-                            (app.buttonY[1] + app.buttonY[3])/2,
-                            text = "Y", font = "Arial 15 bold", fill = "snow")
-        # Button Z
-        canvas.create_rectangle(app.buttonZ[0], app.buttonZ[1], app.buttonZ[2],
-                                app.buttonZ[3],
-                                fill = f"{app.buttonZColor}")
-        canvas.create_text((app.buttonZ[0] + app.buttonZ[2])/2,
-                            (app.buttonZ[1] + app.buttonZ[3])/2,
-                            text = "Z", font = "Arial 15 bold", fill = "snow")
         # Draw arrows for the user to rotate the protein
         drawCenterButton(app, canvas)
         drawLeftArrow(app, canvas)
@@ -1037,20 +1034,23 @@ def drawSecondaryStruct(app, canvas):
     helixStructs = app.structHelix
     sheetStructs = app.structSheet
     if app.isSecondaryStruct:
+        for i in range(len(sheetStructs)):
+            struct = sheetStructs[i]
+            posTuple = struct.posIn2D
+            color = app.sheetColors[i % 9]
+            drawSheet(app, canvas, posTuple, color)
         for struct in helixStructs:
             startPos, endPos = struct.start, struct.end
             drawHelix(app, canvas, startPos, endPos)
-        for struct in sheetStructs:
-            startPos, endPos = struct.start, struct.end
-            drawSheet(app, canvas, startPos, endPos)
-        drawCenterButton(app, canvas)
-        drawLeftArrow(app, canvas)
-        drawRightArrow(app, canvas)
-        drawUpArrow(app, canvas)
-        drawDownArrow(app, canvas)
-        drawSwitchButton(app, canvas)
+    drawCenterButton(app, canvas)
+    drawLeftArrow(app, canvas)
+    drawRightArrow(app, canvas)
+    drawUpArrow(app, canvas)
+    drawDownArrow(app, canvas)
+    drawSwitchButton(app, canvas)
 
-def drawHelix(app, canvas, startPos, endPos):
+def drawHelix(app, canvas, start, end):
+    startPos, endPos = threeDToTwoD(start), threeDToTwoD(end)
     x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
     y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
     # The original image is 1600 pixels wide (we only care about the length)
@@ -1070,39 +1070,31 @@ def drawHelix(app, canvas, startPos, endPos):
     canvas.create_image(center[0], center[1], 
                         image=ImageTk.PhotoImage(image_helix_scaled))
 
-def drawSheet(app, canvas, startPos, endPos):
-    x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
-    y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
-    # The original image is 1998 pixels wide (we only care about the length)
-    dx, dy = x1 - x0, y1 - y0
-    distance = (dx ** 2 + dy ** 2) ** 0.5
-    ratio = distance / 1998
-    image = app.image_sheet
-    radOfRot = math.atan(dy/dx)
-    degreeOfRot = math.degrees(radOfRot)
-    imageOfSheet = image.rotate(degreeOfRot)
-    # The ratio is further scaled since the original ratio would render 
-    # the helices too large
-    image_sheet_scaled = app.scaleImage(imageOfSheet, ratio)
-    # Anchor the center of the image to the midpoint between the start 
-    # and end pos
-    center = ((x0 + x1) / 2, (y0 + y1) / 2)
-    canvas.create_image(center[0], center[1], 
-                        image=ImageTk.PhotoImage(image_sheet_scaled))
-
-def drawCustomSeqPage(app, canvas):
-    drawReturnButton(app, canvas)
-    dna_dict = sample_dna_info
-    counter = 0
-    for entry in sample_dna_info:
-        # Displays dna sequence
-        canvas.create_text(2 * app.width / 3, (1 + 0.1 * counter) * app.height /3, 
-                        text = f"{entry}", anchor = "w", font = "Arial 15 bold")
-        counter += 1
-        # Displays protein sequence
-        canvas.create_text(2 * app.width / 3, (1 + 0.1 * counter) * app.height /3, 
-                        text = dna_dict[f"{entry}"], anchor = "w", font = "Arial 15")
-        counter += 1
+def drawSheet(app, canvas, posTuple, color):
+    # startPos, endPos = threeDToTwoD(start), threeDToTwoD(end)
+    # x0, x1 = startPos[0] + app.width / 3, endPos[0] + app.width / 3
+    # y0, y1 = startPos[1] + app.height / 4 , endPos[1] + app.height / 4
+    # # The original image is 1998 pixels wide (we only care about the length)
+    # dx, dy = x1 - x0, y1 - y0
+    if len(posTuple) >= 2:
+        canvas.create_line(posTuple, width = 10, fill=f"{color}")
+        # canvas.create_line(posTuple[0][0], posTuple[-1][0],
+        #                    posTuple[0][1], posTuple[-1][1], 
+        #                    width = 10, fill = "yellow")
+    # distance = (dx ** 2 + dy ** 2) ** 0.5
+    # ratio = distance / 1998
+    # image = app.image_sheet
+    # radOfRot = math.atan(dy/dx)
+    # degreeOfRot = math.degrees(radOfRot)
+    # imageOfSheet = image.rotate(degreeOfRot)
+    # # The ratio is further scaled since the original ratio would render 
+    # # the helices too large
+    # image_sheet_scaled = app.scaleImage(imageOfSheet, ratio)
+    # # Anchor the center of the image to the midpoint between the start 
+    # # and end pos
+    # center = ((x0 + x1) / 2, (y0 + y1) / 2)
+    # canvas.create_image(center[0], center[1], 
+    #                     image=ImageTk.PhotoImage(image_sheet_scaled))
 
 def drawBottomLeftButton(app, canvas, color):
     button = app.buttonBottomLeft
@@ -1305,13 +1297,94 @@ class Helix(object):
         self.start = productStart
         self.end = productEnd
 
-class Sheet(Helix):
-    def __init__(self, startingCoords, endingCoords):
-        super().__init__(startingCoords, endingCoords)
-        self.start = startingCoords
-        self.end = endingCoords
-        self.start2D = threeDToTwoD(self.start)
-        self.end2D = threeDToTwoD(self.end)
+class Sheet(object):
+    def __init__(self, posInTuple):
+        self.pos = posInTuple
+        result = []
+        for tempPos in posInTuple:
+            realPos = tuple(threeDToTwoD(tempPos))
+            # app.width, app.height = 1000, 800
+            adjustedPos = (realPos[0] + 1000 / 3, realPos[1] + 800 / 4)
+            result.append(adjustedPos)
+        self.posIn2D = tuple(result)
+
+    def scaleUp(self):
+        entries = [[1.05, 0, 0, 0], 
+                   [0, 1.05, 0, 0],
+                   [0, 0, 1.05, 0],
+                   [0, 0, 0, 1]]
+        scaleUpMatrix = np.array(entries)
+        result = []
+        for tempPos in self.pos:
+            newPos = np.matmul(scaleUpMatrix, tempPos)
+            result.append(tuple(newPos))
+        self.pos = tuple(result)
+
+    def scaleDown(self):
+        entries = [[0.95, 0, 0, 0], 
+                   [0, 0.95, 0, 0],
+                   [0, 0, 0.95, 0],
+                   [0, 0, 0, 1]]
+        scaleDownMatrix = np.array(entries)
+        result = []
+        for tempPos in self.pos:
+            newPos = np.matmul(scaleDownMatrix, tempPos)
+            result.append(tuple(newPos))
+        self.pos = tuple(result)
+
+    def rotateAroundX(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), -math.sin(sign * math.pi / 12), 0, 0],
+                   [math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0, 0],
+                   [0, 0, 1, 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        result = []
+        for tempPos in self.pos:
+            newPos = np.matmul(rotateMatrix, tempPos)
+            result.append(newPos)
+        self.pos = tuple(result)
+        result = []
+        for temp2DPos in self.pos:
+            new2DPos = tuple(threeDToTwoD(temp2DPos))
+            shifted2DPos = (new2DPos[0] + 1000 / 3, new2DPos[1] + 800 / 4)
+            result.append(tuple(shifted2DPos))
+        self.posIn2D = tuple(result)
+
+    def rotateAroundY(self, sign):
+        entries = [[1, 0, 0, 0],
+                   [0, math.cos(sign * math.pi / 12), math.sin(sign * math.pi / 12), 0],
+                   [0, -math.sin(sign * math.pi / 12), math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        result = []
+        for tempPos in self.pos:
+            newPos = np.matmul(rotateMatrix, tempPos)
+            result.append(newPos)
+        self.pos = tuple(result)
+        result = []
+        for temp2DPos in self.pos:
+            new2DPos = tuple(threeDToTwoD(temp2DPos))
+            shifted2DPos = (new2DPos[0] + 1000 / 3, new2DPos[1] + 800 / 4)
+            result.append(tuple(shifted2DPos))
+        self.posIn2D = tuple(result)
+
+    def rotateAroundZ(self, sign):
+        entries = [[math.cos(sign * math.pi / 12), 0, math.sin(sign * math.pi / 12), 0],
+                   [0, 1, 0, 0],
+                   [-math.sin(sign * math.pi / 12), 0, math.cos(sign * math.pi / 12), 0],
+                   [0, 0, 0, 1]]
+        rotateMatrix = np.array(entries)
+        result = []
+        for tempPos in self.pos:
+            newPos = np.matmul(rotateMatrix, tempPos)
+            result.append(newPos)
+        self.pos = tuple(result)
+        result = []
+        for temp2DPos in self.pos:
+            new2DPos = tuple(threeDToTwoD(temp2DPos))
+            shifted2DPos = (new2DPos[0] + 1000 / 3, new2DPos[1] + 800 / 4)
+            result.append(tuple(shifted2DPos))
+        self.posIn2D = tuple(result)
 
 def threeDToTwoD(coordinate):
     # Matrix from https://en.wikipedia.org/wiki/Isometric_projection
